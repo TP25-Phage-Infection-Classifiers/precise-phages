@@ -2,6 +2,8 @@ from pathlib import Path
 import os
 import pandas as pd
 import numpy as np
+import seaborn as sb
+import matplotlib.pyplot as plt
 
 
 # ORDNER
@@ -38,8 +40,13 @@ def normalize_log1p(df):
 for file in my_team_files:
     input_file = input_dir / file
     relative_path = input_file.relative_to(input_dir)
-    output_file = output_dir / relative_path.with_name(relative_path.stem + "_cleaned.csv")
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_cleaned_file = output_dir / relative_path.with_name(relative_path.stem + "_cleaned.csv")
+    output_normalized_file = output_dir / relative_path.with_name(relative_path.stem + "_normalized.csv")
+    output_cleaned_file.parent.mkdir(parents=True, exist_ok=True)
+    output_normalized_file.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = Path(__file__).resolve().parents[1] / "output"
+    boxplot_output_dir = output_dir / "boxplots"
+    boxplot_output_dir.mkdir(exist_ok=True) 
 
     if not input_file.exists():
         print(f"Datei nicht gefunden: {file}")
@@ -59,9 +66,55 @@ for file in my_team_files:
     normalized_df = normalize_log1p(cleaned_df)
 
     # ERGEBNIS SPEICHERN UND AUSGEBEN ===
-    final_df = pd.concat([gene_metadata, normalized_df], axis=1)
-    final_df.to_csv(output_file)
+    
+    # 1. Bereinigte Daten speichern
+    cleaned_final_df = pd.concat([gene_metadata, cleaned_df], axis=1)
+    cleaned_final_df.to_csv(output_cleaned_file)
+    
+    # 2. Normalisierte Daten speichern
+    normalized_final_df = pd.concat([gene_metadata, normalized_df], axis=1)
+    normalized_final_df.to_csv(output_normalized_file)
+    
+    # BOXPLOTS ERSTELLEN
+    
+    # Extrahiere nur die numerischen Spalten (Genexpressionswerte)
+    cleaned_data = cleaned_final_df.select_dtypes(include=[float, int])
+    normalized_data = normalized_final_df.select_dtypes(include=[float, int])
+
+    # Schmelze die Daten für die Boxplot-Darstellung
+    cleaned_data_melted = cleaned_data.melt(var_name='Gene', value_name='Expression')
+    cleaned_data_melted['Condition'] = 'Cleaned'
+
+    normalized_data_melted = normalized_data.melt(var_name='Gene', value_name='Expression')
+    normalized_data_melted['Condition'] = 'Normalized'
+
+    # Kombiniere beide DataFrames
+    combined_data = pd.concat([cleaned_data_melted, normalized_data_melted])
+
+    # Boxplot erstellen
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))  # Zwei Subplots nebeneinander
+
+    # Boxplot für bereinigte Daten
+    sb.boxplot(x='Condition', y='Expression', data=cleaned_data_melted, ax=axes[0], color='#B0E0E6')
+    axes[0].set_title(f'{file} - Vor der Normalisierung (bereinigt)')
+    axes[0].set_ylabel('Genexpression')
+
+    # Boxplot für normalisierte Daten
+    sb.boxplot(x='Condition', y='Expression', data=normalized_data_melted, ax=axes[1], color='#B0E0E6')
+    axes[1].set_title(f'{file} - Nach der Normalisierung')
+    axes[1].set_ylabel('Genexpression')
+
+    # Layout anpassen
+    plt.tight_layout()
+
+    # Ausgabe-Dateiname generieren
+    output_file = boxplot_output_dir / f"{Path(file).stem}_boxplot.png"
+    
+    # Speichern der Boxplots als PNG-Datei
+    plt.savefig(output_file)
 
     print(" Datei verarbeitet:", input_file)
     print(" Ausreißer entfernt:", n_outliers)
-    print(" Gespeichert als:", output_file)
+    print(" Vor Normalisierung:", output_cleaned_file)
+    print(" Nach Normalisierung:", output_normalized_file)
+    print(f"Boxplot für {file} gespeichert als {output_file}")
