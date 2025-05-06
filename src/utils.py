@@ -35,6 +35,20 @@ def detect_outliers_iqr(df):
 def normalize_log1p(df):
     return np.log1p(df)
 
+def identify_timepoints(df):
+    for col in df.columns[2]:
+        print(col)
+
+def classify_temporal_expression(row, time_cols):
+    max_timepoint_idx = row[time_cols].values.argmax()
+    n_timepoints = len(time_cols)
+    if max_timepoint_idx < n_timepoints / 3:
+        return 'early'
+    elif max_timepoint_idx < 2 * n_timepoints / 3:
+        return 'middle'
+    else:
+        return 'late'
+
 # NUR UNSERE DATEIEN VERARBEITEN
 # === DATEIEN VERARBEITEN ===
 for file in my_team_files:
@@ -75,6 +89,10 @@ for file in my_team_files:
     normalized_final_df = pd.concat([gene_metadata, normalized_df], axis=1)
     normalized_final_df.to_csv(output_normalized_file)
     
+    # Einteilung der Gene
+    time_cols = list(normalized_final_df.columns[3:])
+    normalized_final_df["Temporal_Class"] = normalized_final_df.apply(lambda row: classify_temporal_expression(row, time_cols), axis=1)
+    
     # BOXPLOTS ERSTELLEN
     
     # Extrahiere nur die numerischen Spalten (Genexpressionswerte)
@@ -113,8 +131,11 @@ for file in my_team_files:
     # Speichern der Boxplots als PNG-Datei
     plt.savefig(output_file)
 
+    output_labeled_file = output_dir / relative_path.with_name(relative_path.stem + "_labeled.csv")
+    normalized_final_df.to_csv(output_labeled_file)
+    
     print(" Datei verarbeitet:", input_file)
     print(" Ausreißer entfernt:", n_outliers)
     print(" Vor Normalisierung:", output_cleaned_file)
     print(" Nach Normalisierung:", output_normalized_file)
-    print(f"Boxplot für {file} gespeichert als {output_file}")
+    print(f" Boxplot für {file} gespeichert als {output_file}")
