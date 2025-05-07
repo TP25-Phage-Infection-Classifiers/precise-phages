@@ -35,18 +35,15 @@ def detect_outliers_iqr(df):
 def normalize_log1p(df):
     return np.log1p(df)
 
-def identify_timepoints(df):
-    for col in df.columns[2]:
-        print(col)
-
+# ordnet jedem Gen ein Label zu, arbeitet mit den normalisierten, bereinigten Daten
 def classify_temporal_expression(row, time_cols):
-    max_timepoint_idx = row[time_cols].values.argmax()
-    n_timepoints = len(time_cols)
-    if max_timepoint_idx < n_timepoints / 3:
+    max_timepoint_idx = row[time_cols].values.argmax() # Index des höchsten Werts der Zeile
+    n_timepoints = len(time_cols) # Anzahl der Werte
+    if max_timepoint_idx < n_timepoints / 3: # wenn Index im ersten Drittel liegt -> early
         return 'early'
-    elif max_timepoint_idx < 2 * n_timepoints / 3:
+    elif max_timepoint_idx < 2 * n_timepoints / 3: # wenn Index im zweiten Drittel liegt -> middle
         return 'middle'
-    else:
+    else: # wenn Index im dritten Drittel liegt -> late
         return 'late'
 
 # NUR UNSERE DATEIEN VERARBEITEN
@@ -71,13 +68,13 @@ for file in my_team_files:
     numeric_df = df.select_dtypes(include=[np.number])
     gene_metadata = df.drop(columns=numeric_df.columns, errors='ignore')
 
-    # AUSREIßER ERKENNEN UND ENTFERNEN 
-    outliers = detect_outliers_iqr(numeric_df)
-    cleaned_df = numeric_df.mask(outliers)
-    n_outliers = outliers.sum().sum()
-
     # NORMALISIERUNG (To be edited eventually for User Story 3)
-    normalized_df = normalize_log1p(cleaned_df)
+    normalized_df = normalize_log1p(numeric_df)
+    
+     # AUSREIßER ERKENNEN UND ENTFERNEN 
+    outliers = detect_outliers_iqr(normalized_df)
+    cleaned_df = normalized_df.mask(outliers)
+    n_outliers = outliers.sum().sum()
 
     # ERGEBNIS SPEICHERN UND AUSGEBEN ===
     
@@ -90,8 +87,8 @@ for file in my_team_files:
     normalized_final_df.to_csv(output_normalized_file)
     
     # Einteilung der Gene
-    time_cols = list(normalized_final_df.columns[3:])
-    normalized_final_df["Temporal_Class"] = normalized_final_df.apply(lambda row: classify_temporal_expression(row, time_cols), axis=1)
+    time_cols = list(normalized_final_df.columns[3:]) #betrachtet erste Zeile ab Spalte 4
+    normalized_final_df["Temporal_Class"] = normalized_final_df.apply(lambda row: classify_temporal_expression(row, time_cols), axis=1) # ordnet jedem Gen ein Label zu
     
     # BOXPLOTS ERSTELLEN
     
@@ -131,6 +128,7 @@ for file in my_team_files:
     # Speichern der Boxplots als PNG-Datei
     plt.savefig(output_file)
 
+    # Speichere Dateien mit Labels 'early', 'middle', 'late' in neue Datei
     output_labeled_file = output_dir / relative_path.with_name(relative_path.stem + "_labeled.csv")
     normalized_final_df.to_csv(output_labeled_file)
     
