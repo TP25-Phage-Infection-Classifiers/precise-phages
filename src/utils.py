@@ -145,6 +145,7 @@ for file in my_team_files:
     print(" Nach Normalisierung:", output_normalized_file)
     print(f" Boxplot für {file} gespeichert als {output_file}")
     print(" Normalisierte Phagengene: ", phage_output_file)
-    print(" Bereinigte Phagengene: ", output_labeled_file)
+    print(" Bereinigte Phagengene: ", output_cleaned_file)
+    print(" Gelabelte Phagengene: ", output_labeled_file)
     print(" Ausreißer entfernt:", n_outliers)
    
