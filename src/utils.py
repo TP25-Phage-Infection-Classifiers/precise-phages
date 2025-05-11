@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sb
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+
 
 
 # ORDNER
@@ -23,14 +25,35 @@ my_team_files = [
     "zhong_2020/Zhong_full_raw_counts.tsv"
 ]
 
+
 # Hilfsfunktionen für Erkennung der Ausreißer, Normalisierung und Klassifizierung
-def detect_outliers_iqr(df):
-    Q1 = df.quantile(0.25)
-    Q3 = df.quantile(0.75)
-    IQR = Q3 - Q1
-    lower = Q1 - 1.5 * IQR
-    upper = Q3 + 1.5 * IQR
-    return (df < lower) | (df > upper)
+def detect_outliers_pca(df, z_threshold=3.0):#df, n_components=2, distance_threshold=2.0)
+    df_filled = df.fillna(0)
+    z_scores = (df_filled - df_filled.mean()) / df_filled.std()
+    return (np.abs(z_scores) > z_threshold)
+    # pca = PCA(n_components=n_components)
+    # components = pca.fit_transform(df.fillna(0))
+    # distances = np.linalg.norm(components, axis=1)
+    # return pd.Series(distances > distance_threshold, index=df.index)
+
+# def detect_outliers_pca_cells(df, n_components=2, distance_threshold=2.0):
+#     pca = PCA(n_components=n_components)
+#     df_filled = df.fillna(0)
+    
+    # PCA auf transponierten Matrix anwenden (Spalten = Samples)
+    components = pca.fit_transform(df_filled.T)
+    distances = np.linalg.norm(components, axis=1)
+
+    # Maske für Ausreißer-Samples erstellen
+    outlier_samples = df.columns[distances > distance_threshold]
+
+    # Nur die Zellen in den Ausreißer-Spalten auf NaN setzen
+    cleaned_df = df.copy()
+    cleaned_df[outlier_samples] = np.nan
+
+    return cleaned_df, outlier_samples
+
+
 
 def normalize_log1p(df):
     return np.log1p(df)
@@ -67,6 +90,31 @@ for file in my_team_files:
     numeric_df = df.select_dtypes(include=[np.number])
     gene_metadata = df.drop(columns=numeric_df.columns, errors='ignore')
 
+    # # Phagen-Daten filtern
+    # phage_df_before = df[df["Entity"] == "phage"]
+
+    # # === Zeitspalten bestimmen (alles außer Meta)
+    # time_cols = df.columns[3:-2]
+
+    # # === Falls "0_R" existiert → nur diese Zellen maskieren
+    # if "0_R" in phage_df_before.columns:
+    #     high_0r_cutoff = phage_df["0_R"].quantile(0.99)
+    #     phage_df.loc[phage_df["0_R"] > high_0r_cutoff, "0_R"] = np.nan
+
+    # # === Niedrig exprimierte Gene maskieren (statt löschen)
+    # total_expression = phage_df_before[time_cols].sum(axis=1)
+    # low_expr_mask = total_expression <= 10
+    # phage_df.loc[low_expr_mask, time_cols] = np.nan
+
+    # # === Vorschau-Datei speichern, um Filtereffekt zu kontrollieren
+    # preview_output_file = output_dir / relative_path.with_name(relative_path.stem + "_after_filtering_preview.csv")
+    # preview_output_file.parent.mkdir(parents=True, exist_ok=True)
+    # phage_df.to_csv(preview_output_file)
+
+    # # === Werte trennen
+    # numeric_phage_df = phage_df.select_dtypes(include=[np.number])
+    # phage_metadata = phage_df.drop(columns=numeric_phage_df.columns, errors='ignore')
+
     # Normalisierung
     normalized_df = normalize_log1p(numeric_df)
     
@@ -83,10 +131,19 @@ for file in my_team_files:
     phage_output_file = output_normalized_file.with_name(output_normalized_file.stem + "_phage_only.csv")
     phage_df.to_csv(phage_output_file, index=True)
 
+
     # Ausreißer erkennen und entfernen
-    outliers = detect_outliers_iqr(numeric_phage_df)
-    cleaned_df = numeric_phage_df.mask(outliers)
+    outliers = detect_outliers_pca(numeric_phage_df)
+    cleaned_df = numeric_phage_df.mask(outliers) # Ausreißer durch NaN ersetzen
     n_outliers = outliers.sum().sum()
+
+    # Zellweise Ausreißer-Erkennung
+    # cleaned_df, outlier_samples = detect_outliers_pca(numeric_phage_df)
+    # n_outliers = len(outlier_samples)
+
+    # if n_outliers > 0:
+    #     print(f" Als Ausreißer erkannte Zeitpunkte/Spalten: {list(outlier_samples)}")
+
     
     # Bereinigte Daten speichern
     cleaned_final_df = pd.concat([phage_metadata, cleaned_df], axis=1)
