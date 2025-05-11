@@ -23,7 +23,7 @@ my_team_files = [
     "zhong_2020/Zhong_full_raw_counts.tsv"
 ]
 
-# HILFSFUNKTIONEN FÜR ERKENNUNG VON AUSREIßER UND NORMALISIERUNG
+# Hilfsfunktionen für Erkennung der Ausreißer, Normalisierung und Klassifizierung
 def detect_outliers_iqr(df):
     Q1 = df.quantile(0.25)
     Q3 = df.quantile(0.75)
@@ -35,7 +35,7 @@ def detect_outliers_iqr(df):
 def normalize_log1p(df):
     return np.log1p(df)
 
-# ordnet jedem Gen ein Label zu, arbeitet mit den normalisierten, bereinigten Daten
+# ordnet jedem Gen ein Label zu, arbeitet mit den normalisierten, bereinigten Phagengendaten
 def classify_temporal_expression(row, time_cols):
     max_timepoint_idx = row[time_cols].values.argmax() # Index des höchsten Werts der Zeile
     n_timepoints = len(time_cols) # Anzahl der Werte
@@ -46,7 +46,6 @@ def classify_temporal_expression(row, time_cols):
     else: # wenn Index im dritten Drittel liegt -> late
         return 'late'
 
-# NUR UNSERE DATEIEN VERARBEITEN
 # === DATEIEN VERARBEITEN ===
 for file in my_team_files:
     input_file = input_dir / file
@@ -68,50 +67,63 @@ for file in my_team_files:
     numeric_df = df.select_dtypes(include=[np.number])
     gene_metadata = df.drop(columns=numeric_df.columns, errors='ignore')
 
-    # NORMALISIERUNG (To be edited eventually for User Story 3)
+    # Normalisierung
     normalized_df = normalize_log1p(numeric_df)
     
-     # AUSREIßER ERKENNEN UND ENTFERNEN 
-    outliers = detect_outliers_iqr(normalized_df)
-    cleaned_df = normalized_df.mask(outliers)
-    n_outliers = outliers.sum().sum()
-
-    # ERGEBNIS SPEICHERN UND AUSGEBEN ===
-    
-    # 1. Bereinigte Daten speichern
-    cleaned_final_df = pd.concat([gene_metadata, cleaned_df], axis=1)
-    cleaned_final_df.to_csv(output_cleaned_file)
-    
-    # 2. Normalisierte Daten speichern
+    # Normalisierte Daten speichern
     normalized_final_df = pd.concat([gene_metadata, normalized_df], axis=1)
     normalized_final_df.to_csv(output_normalized_file)
     
+    # Nur Phagengene rausfiltern
+    phage_df = normalized_final_df[normalized_final_df["Entity"] == "phage"]
+    numeric_phage_df = phage_df.select_dtypes(include=[np.number])
+    phage_metadata = phage_df.drop(columns=numeric_phage_df.columns, errors='ignore')
+    
+    # Nur normalisierte Phagendaten speichern
+    phage_output_file = output_normalized_file.with_name(output_normalized_file.stem + "_phage_only.csv")
+    phage_df.to_csv(phage_output_file, index=True)
+
+    # Ausreißer erkennen und entfernen
+    outliers = detect_outliers_iqr(numeric_phage_df)
+    cleaned_df = numeric_phage_df.mask(outliers)
+    n_outliers = outliers.sum().sum()
+    
+    # Bereinigte Daten speichern
+    cleaned_final_df = pd.concat([phage_metadata, cleaned_df], axis=1)
+    cleaned_final_df.to_csv(output_cleaned_file)
+    
     # Einteilung der Gene
-    time_cols = list(normalized_final_df.columns[3:]) #betrachtet erste Zeile ab Spalte 4
-    normalized_final_df["Temporal_Class"] = normalized_final_df.apply(lambda row: classify_temporal_expression(row, time_cols), axis=1) # ordnet jedem Gen ein Label zu
+    time_cols = list(cleaned_final_df.columns[3:]) #betrachtet erste Zeile ab Spalte 4
+    cleaned_final_df["Temporal_Class"] = cleaned_final_df.apply(lambda row: classify_temporal_expression(row, time_cols), axis=1) # ordnet jedem Gen ein Label zu
     
-    # BOXPLOTS ERSTELLEN
+    # Speichere Dateien mit Labels 'early', 'middle', 'late' in neue Datei
+    output_labeled_file = output_dir / relative_path.with_name(relative_path.stem + "_labeled.csv")
+    cleaned_final_df.to_csv(output_labeled_file)
     
+    # BOXPLOTS ERSTELLEN - es werden normalisierte Daten mit rohen Daten verglichen
     # Extrahiere nur die numerischen Spalten (Genexpressionswerte)
-    cleaned_data = cleaned_final_df.select_dtypes(include=[float, int])
+    raw_data = df.select_dtypes(include=[float, int])
+    #cleaned_data = cleaned_final_df.select_dtypes(include=[float, int])
     normalized_data = normalized_final_df.select_dtypes(include=[float, int])
 
     # Schmelze die Daten für die Boxplot-Darstellung
-    cleaned_data_melted = cleaned_data.melt(var_name='Gene', value_name='Expression')
-    cleaned_data_melted['Condition'] = 'Cleaned'
+    raw_data_melted = raw_data.melt(var_name='Gene', value_name='Expression')
+    raw_data_melted['Condition'] = 'Raw'
+    #cleaned_data_melted = cleaned_data.melt(var_name='Gene', value_name='Expression')
+    #cleaned_data_melted['Condition'] = 'Cleaned'
 
     normalized_data_melted = normalized_data.melt(var_name='Gene', value_name='Expression')
     normalized_data_melted['Condition'] = 'Normalized'
 
     # Kombiniere beide DataFrames
-    combined_data = pd.concat([cleaned_data_melted, normalized_data_melted])
+    combined_data = pd.concat([raw_data_melted, normalized_data_melted])
 
     # Boxplot erstellen
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))  # Zwei Subplots nebeneinander
 
-    # Boxplot für bereinigte Daten
-    sb.boxplot(x='Condition', y='Expression', data=cleaned_data_melted, ax=axes[0], color='#B0E0E6')
-    axes[0].set_title(f'{file} - Vor der Normalisierung (bereinigt)')
+    # Boxplot für rohe Daten
+    sb.boxplot(x='Condition', y='Expression', data=raw_data_melted, ax=axes[0], color='#B0E0E6')
+    axes[0].set_title(f'{file} - Vor der Normalisierung')
     axes[0].set_ylabel('Genexpression')
 
     # Boxplot für normalisierte Daten
@@ -128,12 +140,12 @@ for file in my_team_files:
     # Speichern der Boxplots als PNG-Datei
     plt.savefig(output_file)
 
-    # Speichere Dateien mit Labels 'early', 'middle', 'late' in neue Datei
-    output_labeled_file = output_dir / relative_path.with_name(relative_path.stem + "_labeled.csv")
-    normalized_final_df.to_csv(output_labeled_file)
-    
+
     print(" Datei verarbeitet:", input_file)
-    print(" Ausreißer entfernt:", n_outliers)
-    print(" Vor Normalisierung:", output_cleaned_file)
     print(" Nach Normalisierung:", output_normalized_file)
     print(f" Boxplot für {file} gespeichert als {output_file}")
+    print(" Normalisierte Phagengene: ", phage_output_file)
+    print(" Bereinigte Phagengene: ", output_cleaned_file)
+    print(" Gelabelte Phagengene: ", output_labeled_file)
+    print(" Ausreißer entfernt:", n_outliers)
+   
