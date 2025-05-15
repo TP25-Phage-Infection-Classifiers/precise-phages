@@ -106,6 +106,14 @@ for file in my_team_files:
     output_labeled_file = output_dir / relative_path.with_name(relative_path.stem + "_labeled.csv")
     cleaned_final_df.to_csv(output_labeled_file)
     
+    # Speichern der Daten im Exportformat mit nur GenID und Label
+    # Erstelle DataFrame mit nur GenID und zugehörigem Label
+    export_df = cleaned_final_df[["Temporal_Class"]].copy()
+    export_df.index.name = "GeneID" 
+    export_df.reset_index(inplace=True)
+    output_export_file = output_dir / relative_path.with_name(relative_path.stem + "_export.csv")
+    export_df.to_csv(output_export_file, index=False)
+    
     # BOXPLOTS ERSTELLEN - es werden normalisierte Daten mit rohen Daten verglichen
     # Extrahiere nur die numerischen Spalten (Genexpressionswerte)
     raw_data = df.select_dtypes(include=[float, int])
@@ -154,4 +162,5 @@ for file in my_team_files:
     print(" Bereinigte Phagengene: ", output_cleaned_file)
     print(" Gelabelte Phagengene: ", output_labeled_file)
     print(" Ausreißer entfernt:", n_outliers)
+    print(" Exportfile: ", output_export_file)
    
