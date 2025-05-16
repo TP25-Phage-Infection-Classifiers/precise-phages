@@ -71,7 +71,7 @@ for file in my_team_files:
     output_dir = Path(__file__).resolve().parents[1] / "output"
     boxplot_output_dir = output_dir / "boxplots"
     boxplot_output_dir.mkdir(exist_ok=True) 
-    pie_output_dir = output_dir / "pie"
+    pie_output_dir = output_dir / "pie chart"
     pie_output_dir.mkdir(exist_ok=True)
 
     if not input_file.exists():
@@ -173,22 +173,17 @@ for file in my_team_files:
     fig, ax = plt.subplots(figsize=(5, 5)) # Pie Plot mit matplotlib direkt, bessere Kontrolle
     
     # Prozentwerte berechnen
-    total = label_counts.sum()
-    percentages = (label_counts / total * 100).round(1)
+    total = label_counts.sum() # Anzahl aller gelabelten Gene
+    percentages = (label_counts / total * 100).round(1) # Verteilung in Prozent auf eine Nachkommastelle gerundet
     legend_labels = [f"{label}  {pct}%" for label, pct in zip(label_counts.index, percentages)]
 
     # Kuchendiagramm zeichnen
-    wedges, _ = ax.pie( # ACHTUNG hier was geändert als ich label und prozent nicht mehr im diagramm wollte
+    wedges, _ = ax.pie( 
     label_counts,
-    #labels=label_counts.index,
-    #autopct='%1.1f%%', # eine Nachkommastelle für Prozentzahlen
     startangle=90, # startet oben
     counterclock=False, # im Uhrzeigersinn
     colors=colors,
-    textprops={'fontsize': 8},
-    #pctdistance=0.85, # verschiebt Prozentzahlen weiter nach innen/außen
-    #labeldistance=1.05, # verschiebt Label weiter nach innen/außen
-    #rotatelabels=True # Label drehen sich mit
+    textprops={'fontsize': 8}
     )
 
     # Legende mit Label + Prozent
@@ -199,6 +194,11 @@ for file in my_team_files:
     plt.tight_layout() # Layout anpassen
     output_pie_file = pie_output_dir / f"{Path(file).stem}_pie.png" # Ausgabe-Datei generieren
     plt.savefig(output_pie_file) # Kuchendiagramm speichern als PNG-Datei
+
+    # Kuchendiagramm Ergebnis Dokumentation und Interpretation:
+    # Verteilung der Labels zwischen den Datensätzen variiert stark.
+    # Innerhalb eines Datensatzes ist die Verteilung oft unausgeglichen:
+    # in der Regel dominieren 1 bis 2 Gene deutlich, während das dritte Label nur selten vorkommt.
 
 
     print(" Datei verarbeitet:", input_file)
