@@ -71,6 +71,8 @@ for file in my_team_files:
     output_dir = Path(__file__).resolve().parents[1] / "output"
     boxplot_output_dir = output_dir / "boxplots"
     boxplot_output_dir.mkdir(exist_ok=True) 
+    pie_output_dir = output_dir / "pie"
+    pie_output_dir.mkdir(exist_ok=True)
 
     if not input_file.exists():
         print(f"Datei nicht gefunden: {file}")
@@ -165,6 +167,38 @@ for file in my_team_files:
     # Analyse Label-Distribution
     label_counts = count_labels(export_df) # Anzahl Labels pro Datei
     total_label_counts += label_counts # Anzahl Labels aller Dateien
+
+    # KUCHENDIAGRAMM erstellen - es wird die Klassenverteilung pro Datensatz visualisiert
+    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3']
+    fig, ax = plt.subplots(figsize=(5, 5)) # Pie Plot mit matplotlib direkt, bessere Kontrolle
+    
+    # Prozentwerte berechnen
+    total = label_counts.sum()
+    percentages = (label_counts / total * 100).round(1)
+    legend_labels = [f"{label}  {pct}%" for label, pct in zip(label_counts.index, percentages)]
+
+    # Kuchendiagramm zeichnen
+    wedges, _ = ax.pie( # ACHTUNG hier was geändert als ich label und prozent nicht mehr im diagramm wollte
+    label_counts,
+    #labels=label_counts.index,
+    #autopct='%1.1f%%', # eine Nachkommastelle für Prozentzahlen
+    startangle=90, # startet oben
+    counterclock=False, # im Uhrzeigersinn
+    colors=colors,
+    textprops={'fontsize': 8},
+    #pctdistance=0.85, # verschiebt Prozentzahlen weiter nach innen/außen
+    #labeldistance=1.05, # verschiebt Label weiter nach innen/außen
+    #rotatelabels=True # Label drehen sich mit
+    )
+
+    # Legende mit Label + Prozent
+    ax.legend(wedges, legend_labels, title="Labels", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    
+    ax.set_title(f'Label-Verteilung Diagramm\n{file}', fontsize=10) # Titel
+    ax.axis('equal') # Kreis statt Oval
+    plt.tight_layout() # Layout anpassen
+    output_pie_file = pie_output_dir / f"{Path(file).stem}_pie.png" # Ausgabe-Datei generieren
+    plt.savefig(output_pie_file) # Kuchendiagramm speichern als PNG-Datei
 
 
     print(" Datei verarbeitet:", input_file)
