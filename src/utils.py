@@ -198,7 +198,7 @@ for file in my_team_files:
     # Kuchendiagramm Ergebnis Dokumentation und Interpretation:
     # Verteilung der Labels zwischen den Datensätzen variiert stark.
     # Innerhalb eines Datensatzes ist die Verteilung oft unausgeglichen:
-    # in der Regel dominieren 1 bis 2 Gene deutlich, während das dritte Label nur selten vorkommt.
+    # in der Regel dominieren 1 bis 2 Label deutlich, während das dritte Label nur selten vorkommt.
 
 
     print(" Datei verarbeitet:", input_file)
