@@ -51,6 +51,14 @@ def classify_temporal_expression(row, time_cols):
         return 'middle'
     else:
         return 'late'
+    
+# Label-Distribution Analyse
+label_order = ['undefined', 'early', 'middle','late'] # Reihenfolge, in der counts ausgegeben
+total_label_counts = pd.Series(0, index=label_order) # Counts aller Dateien, wird später berechnet
+# zählt, wie oft jedes Label in einer Datei vorkommt
+def count_labels(df):
+    counts = df['Temporal_Class'].value_counts()
+    return counts.reindex(label_order, fill_value=0)    
 
 # === DATEIEN VERARBEITEN ===
 for file in my_team_files:
@@ -154,6 +162,10 @@ for file in my_team_files:
     # Speichern der Boxplots als PNG-Datei
     plt.savefig(output_file)
 
+    # Analyse Label-Distribution
+    label_counts = count_labels(export_df) # Anzahl Labels pro Datei
+    total_label_counts += label_counts # Anzahl Labels aller Dateien
+
 
     print(" Datei verarbeitet:", input_file)
     print(" Nach Normalisierung:", output_normalized_file)
@@ -163,4 +175,6 @@ for file in my_team_files:
     print(" Gelabelte Phagengene: ", output_labeled_file)
     print(" Ausreißer entfernt:", n_outliers)
     print(" Exportfile: ", output_export_file)
-   
+    print(" Label Verteilung: ", label_counts)
+
+print("Gesamte Label Verteilung: ", total_label_counts)  
