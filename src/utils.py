@@ -211,4 +211,5 @@ for file in my_team_files:
     print(" Exportfile: ", output_export_file)
     print(" Label Verteilung: ", label_counts)
 
-print("Gesamte Label Verteilung: ", total_label_counts)  
+print("Gesamte Label Verteilung: ")
+print(total_label_counts) # in zwei Zeilen geprintet damit Formatierung in Terminal schöner
