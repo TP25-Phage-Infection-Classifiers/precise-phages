@@ -58,7 +58,30 @@ total_label_counts = pd.Series(0, index=label_order) # Counts aller Dateien, wir
 # zählt, wie oft jedes Label in einer Datei vorkommt
 def count_labels(df):
     counts = df['Temporal_Class'].value_counts()
-    return counts.reindex(label_order, fill_value=0)    
+    return counts.reindex(label_order, fill_value=0) 
+
+def draw_piechart(label_counts, file):
+    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3']
+    fig, ax = plt.subplots(figsize=(5, 5)) # Pie Plot mit matplotlib direkt, bessere Kontrolle
+    # Prozentwerte berechnen
+    total = label_counts.sum() # Anzahl aller gelabelten Gene
+    percentages = (label_counts / total * 100).round(1) # Verteilung in Prozent auf eine Nachkommastelle gerundet
+    legend_labels = [f"{label}  {pct}%" for label, pct in zip(label_counts.index, percentages)]
+    wedges, _ = ax.pie( 
+        label_counts,
+        startangle=90, # startet oben
+        counterclock=False, # im Uhrzeigersinn
+        colors=colors,
+        textprops={'fontsize': 8}
+        )   
+    # Legende mit Label + Prozent
+    ax.legend(wedges, legend_labels, title="Labels", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    
+    ax.set_title(f'Label-Verteilung Diagramm\n{file}', fontsize=10) # Titel
+    ax.axis('equal') # Kreis statt Oval
+    plt.tight_layout() # Layout anpassen
+    output_pie_file = pie_output_dir / f"{Path(file).stem}_pie.png" # Ausgabe-Datei generieren
+    plt.savefig(output_pie_file) # Kuchendiagramm speichern als PNG-Datei
 
 # === DATEIEN VERARBEITEN ===
 for file in my_team_files:
@@ -168,32 +191,7 @@ for file in my_team_files:
     label_counts = count_labels(export_df) # Anzahl Labels pro Datei
     total_label_counts += label_counts # Anzahl Labels aller Dateien
 
-    # KUCHENDIAGRAMM erstellen - es wird die Klassenverteilung pro Datensatz visualisiert
-    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3']
-    fig, ax = plt.subplots(figsize=(5, 5)) # Pie Plot mit matplotlib direkt, bessere Kontrolle
-    
-    # Prozentwerte berechnen
-    total = label_counts.sum() # Anzahl aller gelabelten Gene
-    percentages = (label_counts / total * 100).round(1) # Verteilung in Prozent auf eine Nachkommastelle gerundet
-    legend_labels = [f"{label}  {pct}%" for label, pct in zip(label_counts.index, percentages)]
-
-    # Kuchendiagramm zeichnen
-    wedges, _ = ax.pie( 
-    label_counts,
-    startangle=90, # startet oben
-    counterclock=False, # im Uhrzeigersinn
-    colors=colors,
-    textprops={'fontsize': 8}
-    )
-
-    # Legende mit Label + Prozent
-    ax.legend(wedges, legend_labels, title="Labels", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
-    
-    ax.set_title(f'Label-Verteilung Diagramm\n{file}', fontsize=10) # Titel
-    ax.axis('equal') # Kreis statt Oval
-    plt.tight_layout() # Layout anpassen
-    output_pie_file = pie_output_dir / f"{Path(file).stem}_pie.png" # Ausgabe-Datei generieren
-    plt.savefig(output_pie_file) # Kuchendiagramm speichern als PNG-Datei
+    draw_piechart(label_counts, file)
 
     # Kuchendiagramm Ergebnis Dokumentation und Interpretation:
     # Verteilung der Labels zwischen den Datensätzen variiert stark.
@@ -213,3 +211,4 @@ for file in my_team_files:
 
 print("Gesamte Label Verteilung: ")
 print(total_label_counts) # in zwei Zeilen geprintet damit Formatierung in Terminal schöner
+draw_piechart(total_label_counts, "all_files")
