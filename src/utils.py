@@ -35,14 +35,14 @@ my_gff3_files=[
     "sprenger_2024/Vibrio_phage_VP882.gff3",
     "zhong_2020/Pseudomonas_phage_phiYY_complete.gff3"
 ]
-my_genom_flies=[
+my_genome_flies=[
     "ceyssens_2014/Pseudomonas_phage_phiKZ.fasta",
     "finstrlova_2022/Staphylococcus_phage_K.fasta",
     "guegler_2021/Enterobacteria_phage_T4.fasta",
     "kuptsov_2022/Staphylococcus_phage_vB_SauM-515A1.fasta",
     "meaden_2021/Pseudomonas_phage_DMS3.fasta",
     "sprenger_2024/Vibrio_phage_VP882.fasta",
-    "data/zhong_2020/Pseudomonas_phage_phiYY_complete.fasta",
+    "zhong_2020/Pseudomonas_phage_phiYY_complete.fasta",
 ]
 # Hilfsfunktionen für Erkennung der Ausreißer, Normalisierung und Klassifizierung
 def detect_outliers_iqr(df):
@@ -76,6 +76,7 @@ def classify_temporal_expression(row, time_cols):
 # Label-Distribution Analyse
 label_order = ['undefined', 'early', 'middle','late'] # Reihenfolge, in der counts ausgegeben
 total_label_counts = pd.Series(0, index=label_order) # Counts aller Dateien, wird später berechnet
+
 # zählt, wie oft jedes Label in einer Datei vorkommt
 def count_labels(df):
     counts = df['Temporal_Class'].value_counts()
@@ -88,6 +89,7 @@ def draw_piechart(label_counts, file):
     total = label_counts.sum() # Anzahl aller gelabelten Gene
     percentages = (label_counts / total * 100).round(1) # Verteilung in Prozent auf eine Nachkommastelle gerundet
     legend_labels = [f"{label}  {pct}%" for label, pct in zip(label_counts.index, percentages)]
+    
     wedges, _ = ax.pie( 
         label_counts,
         startangle=90, # startet oben
@@ -100,24 +102,28 @@ def draw_piechart(label_counts, file):
     
     ax.set_title(f'Label-Verteilung Diagramm\n{file}', fontsize=10) # Titel
     ax.axis('equal') # Kreis statt Oval
+    
     plt.tight_layout() # Layout anpassen
     output_pie_file = pie_output_dir / f"{Path(file).stem}_pie.png" # Ausgabe-Datei generieren
     plt.savefig(output_pie_file) # Kuchendiagramm speichern als PNG-Datei
 
 # === DATEIEN VERARBEITEN ===
+boxplot_output_dir = output_dir / "boxplots"
+pie_output_dir = output_dir / "pie chart"
+boxplot_output_dir.mkdir(exist_ok=True) 
+pie_output_dir.mkdir(exist_ok=True)
+
+
 for file in my_team_files:
     input_file = input_dir / file
     relative_path = input_file.relative_to(input_dir)
+   
     output_cleaned_file = output_dir / relative_path.with_name(relative_path.stem + "_cleaned.csv")
     output_normalized_file = output_dir / relative_path.with_name(relative_path.stem + "_normalized.csv")
     output_cleaned_file.parent.mkdir(parents=True, exist_ok=True)
     output_normalized_file.parent.mkdir(parents=True, exist_ok=True)
-    output_dir = Path(__file__).resolve().parents[1] / "output"
-    boxplot_output_dir = output_dir / "boxplots"
-    boxplot_output_dir.mkdir(exist_ok=True) 
-    pie_output_dir = output_dir / "pie chart"
-    pie_output_dir.mkdir(exist_ok=True)
-
+    
+    
     if not input_file.exists():
         print(f"Datei nicht gefunden: {file}")
         continue  
@@ -289,7 +295,7 @@ def plot_genome_map(genes_df, genome_length, title, output_path):
     if 'Temporal_Class' not in genes_df.columns:
         genes_df['Temporal_Class'] = 'undefined'
     else:
-        genes_df['Temporal_Class'].fillna('undefined', inplace=True)
+        genes_df['Temporal_Class'] = genes_df['Temporal_Class'].fillna('undefined')
 
     for _, row in genes_df.iterrows():
         color = colors.get(row['Temporal_Class'], '#999999')
@@ -308,26 +314,49 @@ def plot_genome_map(genes_df, genome_length, title, output_path):
     plt.savefig(output_path)
     plt.close()
 
-# --- Hauptprogramm ---
 
-# Pfade anpassen
-gff_file = Path('data/ceyssens_2014/Pseudomonas_phage_phiKZ.gff3')
-label_file = Path('output/ceyssens_2014/Ceyssens_directional_full_raw_counts_export.csv')
-fasta_file = Path('data/ceyssens_2014/Pseudomonas_phage_phiKZ.fasta')
-output_img = Path('output/genome_map_phiKZ.png')
+# Genome Maps für alle Datensätze
 
-# Daten einlesen
-gff_genes = read_gff3(gff_file)
-labels = read_labels(label_file)
-genome_length = read_fasta_length(fasta_file)
+genome_map_dir = Path("output/genome_maps")
+genome_map_dir.mkdir(parents=True, exist_ok=True)
 
-# Merge auf GeneID (Vorsicht: Duplizierte IDs oder fehlende könnten Probleme machen)
-merged = pd.merge(gff_genes, labels, on='GeneID', how='left')
+for gff_rel, fasta_rel, count_rel in zip(my_gff3_files,
+                                        my_genome_flies,
+                                         my_team_files ):
+    #Absoluten Pfad für jede Eingabedatei zusammenbauen
+    gff_path   = input_dir / gff_rel     #Gen Annotation (GFF3)
+    fasta_path = input_dir / fasta_rel   #Gesamtgenom (Fasta)
 
-# Alle Gene ohne Temporal_Class als 'undefined' kennzeichnen (wird in Plot gefixt)
-merged['Temporal_Class'].fillna('undefined', inplace=True)
+    # Label Datei finden in 'output'
+    label_path = (output_dir / Path(count_rel).parent /
+                f"{Path(count_rel).stem}_export.csv")
+    # Falls Lebel Datei nicht existiert, nächsten Datensatz nehmen
+    if not label_path.exists():
+        print(f"Überspringe {count_rel}: Label-Datei fehlt")
+        continue
+   
 
-# Plot erstellen
-plot_genome_map(merged, genome_length, "phiKZ Genomkarte", output_img)
+    # Daten laden
+    gff_genes = read_gff3(gff_path)   #Gene + Positio aus GFF3
+    labels = read_labels(label_path)
 
-print(f"Genomkarte gespeichert: {output_img}")
+    #Gene und Labels zusammenführen
+    # Merge auf GeneID (Vorsicht: Duplizierte IDs oder fehlende könnten Probleme machen)
+    merged = pd.merge(gff_genes, labels, on='GeneID', how='left')
+   
+    # Alle Gene ohne Temporal_Class als 'undefined' kennzeichnen (wird in Plot gefixt)
+    merged["Temporal_Class"] = merged["Temporal_Class"].fillna("undefined")
+    
+    # Genomlänge aus Fasta bestimmen
+    genome_length = read_fasta_length(fasta_path)
+    
+    # Pfad für die Ausgabegrafik
+    out_img = genome_map_dir / f"{gff_path.stem}_genome_map.png"
+
+    # Plot erstellen
+    plot_genome_map(merged,
+                    genome_length,
+                    f"{gff_path.stem} Genomkarte",  # Titel = Dateiname + Genomkarte
+                    out_img)
+
+    print(f"Genomkarte gespeichert: {out_img}")
