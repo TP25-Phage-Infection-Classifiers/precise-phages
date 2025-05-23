@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from PIL import Image
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord 
+# pip3 install bcbio-gff
+from BCBio import GFF
 
 
 
@@ -122,6 +125,8 @@ for file in my_team_files:
     output_normalized_file = output_dir / relative_path.with_name(relative_path.stem + "_normalized.csv")
     output_cleaned_file.parent.mkdir(parents=True, exist_ok=True)
     output_normalized_file.parent.mkdir(parents=True, exist_ok=True)
+
+    
     
     
     if not input_file.exists():
@@ -330,7 +335,7 @@ for gff_rel, fasta_rel, count_rel in zip(my_gff3_files,
     # Label Datei finden in 'output'
     label_path = (output_dir / Path(count_rel).parent /
                 f"{Path(count_rel).stem}_export.csv")
-    # Falls Lebel Datei nicht existiert, nächsten Datensatz nehmen
+    # Falls Label Datei nicht existiert, nächsten Datensatz nehmen
     if not label_path.exists():
         print(f"Überspringe {count_rel}: Label-Datei fehlt")
         continue
@@ -360,3 +365,51 @@ for gff_rel, fasta_rel, count_rel in zip(my_gff3_files,
                     out_img)
 
     print(f"Genomkarte gespeichert: {out_img}")
+
+
+
+#-------------------------------------------------------------------------------------
+
+# Eingabedateien
+gff_file = "data/ceyssens_2014/Pseudomonas_phage_phiKZ.gff3"
+fasta_file = "data/ceyssens_2014/Pseudomonas_phage_phiKZ.fasta"
+output_dna_file = "output/database_DNA/output_genes.fasta"
+output_protein_file = "output/database_Protein/output_genes_protein.fasta"
+
+# Sequenzdaten einlesen
+# genome ist ein Dictonary, SequenzID ist Key,  Sequenz ist Value
+genome = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
+
+
+# Testausgabe, ob das Dictionary geladen wurde
+print("Keys im genome-Dictionary:", list(genome.keys()))
+print("Sequenzlänge von NC_004629.1:", len(genome["NC_004629.1"].seq))
+
+
+dna_records = []
+protein_records = []
+with open(gff_file) as gff_handle:
+    for rec in GFF.parse(gff_handle, base_dict=genome):
+        for feature in rec.features:
+            if feature.type == "gene":
+                gene_id = feature.id if feature.id else "unknown_gene"
+                seq = feature.extract(rec.seq)
+                
+                 
+                # DNA speichern
+                dna_record = SeqRecord(seq, id=gene_id, description="")
+                dna_records.append(dna_record)
+
+                # Protein speichern
+                protein_seq = seq.translate(to_stop=True)  # stop bei erstem Stop-Codon
+                protein_record = SeqRecord(protein_seq, id=gene_id, description="")
+                protein_records.append(protein_record)
+
+
+# DNA schreiben
+with open(output_dna_file, "w") as out_handle:
+    SeqIO.write(dna_records, out_handle, "fasta")
+
+# Protein schreiben
+with open(output_protein_file, "w") as out_handle:
+    SeqIO.write(protein_records, out_handle, "fasta")
