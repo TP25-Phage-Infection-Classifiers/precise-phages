@@ -369,6 +369,8 @@ for gff_rel, fasta_rel, count_rel in zip(my_gff3_files,
 
 
 # DNA + Protein extrahieren
+
+    valid_genes = set(gene_id.lower() for gene_id in labels[labels["Temporal_Class"].isin(["early", "middle", "late"])]["GeneID"])
     genome = SeqIO.to_dict(SeqIO.parse(fasta_path, "fasta"))
 
     dna_records = []
@@ -379,16 +381,18 @@ for gff_rel, fasta_rel, count_rel in zip(my_gff3_files,
             for feature in rec.features:
                 if feature.type == "gene":
                     gene_id = feature.id if feature.id else "unknown_gene"
-                    seq = feature.extract(rec.seq)
+                    # Nur Gene extrahieren, die in valid_genes sind
+                    if gene_id.lower() in valid_genes:
+                        seq = feature.extract(rec.seq)
 
-                    # DNA speichern
-                    dna_record = SeqRecord(seq, id=gene_id, description="")
-                    dna_records.append(dna_record)
+                        # DNA speichern
+                        dna_record = SeqRecord(seq, id=gene_id, description="")
+                        dna_records.append(dna_record)
 
-                    # Protein speichern
-                    protein_seq = seq.translate(to_stop=True)
-                    protein_record = SeqRecord(protein_seq, id=gene_id, description="")
-                    protein_records.append(protein_record)
+                        # Protein speichern
+                        protein_seq = seq.translate(to_stop=True)
+                        protein_record = SeqRecord(protein_seq, id=gene_id, description="")
+                        protein_records.append(protein_record)
 
 
     # Ausgabepfade für DNA und Protein (pro Datensatz)
