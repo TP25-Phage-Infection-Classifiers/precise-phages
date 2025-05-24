@@ -1,12 +1,4 @@
-import pandas as pd
 import numpy as np
-
-
-
-
-
-
-
 
 # Hilfsfunktionen für Erkennung der Ausreißer, Normalisierung und Klassifizierung
 def detect_outliers_iqr(df):

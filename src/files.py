@@ -1,21 +1,4 @@
 from pathlib import Path
-import os
-import pandas as pd
-import numpy as np
-import seaborn as sb
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from PIL import Image
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord 
-# pip3 install bcbio-gff
-from BCBio import GFF
-
-
-import preprocess as pre 
-import label  
-import plots
-
 
 # ORDNER
 project_root = Path(__file__).resolve().parents[1]
@@ -51,3 +34,11 @@ my_genome_flies=[
     "sprenger_2024/Vibrio_phage_VP882.fasta",
     "zhong_2020/Pseudomonas_phage_phiYY_complete.fasta",
 ]
+png_files = ["output/pie chart/Ceyssens_directional_full_raw_counts_pie.png", 
+             "output/pie chart/Finstrlova_SH1000_full_raw_counts_pie.png",
+             "output/pie chart/Guegler_T4_plusToxIN_full_raw_counts_pie.png",
+             "output/pie chart/Kuptsov_full_raw_counts_pie.png",
+             "output/pie chart/Meaden_BIM_full_raw_counts_pie.png",
+             "output/pie chart/Sprenger_VC_WT_VP882_WT_full_raw_counts_pie.png",
+             "output/pie chart/Zhong_full_raw_counts_pie.png",
+             "output/pie chart/all_files_pie.png"]

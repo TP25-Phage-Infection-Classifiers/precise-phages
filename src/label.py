@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-
 
 
 # ordnet jedem Gen ein Label zu, arbeitet mit den normalisierten, bereinigten Phagengendaten

@@ -1,20 +1,11 @@
-# Datei für die user stories zur Genomischen Lokalisierung der Klassen
-
 from pathlib import Path
 import pandas as pd
-import numpy as np
-import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from BCBio import GFF
-
-
-import utils
-
-
-
+import files
 
 ## Genomkarte erstellen
 
@@ -75,34 +66,27 @@ def plot_genome_map(genes_df, genome_length, title, output_path):
     plt.savefig(output_path)
     plt.close()
 
-
-
-
-
 # Genome Maps für alle Datensätze
-
-
 def generate_genome_map():
 
     genome_map_dir = Path("output/genome_maps")
     genome_map_dir.mkdir(parents=True, exist_ok=True)
 
-    for gff_rel, fasta_rel, count_rel in zip(utils.my_gff3_files,
-                                            utils.my_genome_flies,
-                                            utils.my_team_files ):
+    for gff_rel, fasta_rel, count_rel in zip(files.my_gff3_files,
+                                            files.my_genome_flies,
+                                            files.my_team_files ):
         #Absoluten Pfad für jede Eingabedatei zusammenbauen
-        gff_path   = utils.input_dir / gff_rel     #Gen Annotation (GFF3)
-        fasta_path = utils.input_dir / fasta_rel   #Gesamtgenom (Fasta)
+        gff_path   = files.input_dir / gff_rel     #Gen Annotation (GFF3)
+        fasta_path = files.input_dir / fasta_rel   #Gesamtgenom (Fasta)
 
         # Label Datei finden in 'output'
-        label_path = (utils.output_dir / Path(count_rel).parent /
+        label_path = (files.output_dir / Path(count_rel).parent /
                     f"{Path(count_rel).stem}_export.csv")
         # Falls Label Datei nicht existiert, nächsten Datensatz nehmen
         if not label_path.exists():
             print(f"Überspringe {count_rel}: Label-Datei fehlt")
             continue
    
-
         # Daten laden
         gff_genes = read_gff3(gff_path)   #Gene + Positio aus GFF3
         labels = read_labels(label_path)
@@ -126,7 +110,7 @@ def generate_genome_map():
                         f"{gff_path.stem} Genomkarte",  # Titel = Dateiname + Genomkarte
                         out_img)
 
-        print(f"Genomkarte gespeichert: {out_img}")
+        # print(f"Genomkarte gespeichert: {out_img}")
 
 
 
@@ -154,8 +138,8 @@ def generate_genome_map():
 
 
         # Ausgabepfade für DNA und Protein (pro Datensatz)
-        output_dna_file = utils.output_dir / f"database_DNA/{gff_path.stem}_genes.fasta"
-        output_protein_file = utils.output_dir / f"database_Protein/{gff_path.stem}_genes_protein.fasta"
+        output_dna_file = files.output_dir / f"database_DNA/{gff_path.stem}_genes.fasta"
+        output_protein_file = files.output_dir / f"database_Protein/{gff_path.stem}_genes_protein.fasta"
 
         output_dna_file.parent.mkdir(parents=True, exist_ok=True)
         output_protein_file.parent.mkdir(parents=True, exist_ok=True)
@@ -166,5 +150,5 @@ def generate_genome_map():
         with open(output_protein_file, "w") as out_handle:
             SeqIO.write(protein_records, out_handle, "fasta")
 
-        print(f"DNA-Sequenzen gespeichert: {output_dna_file}")
-        print(f"Protein-Sequenzen gespeichert: {output_protein_file}")
+        #print(f"DNA-Sequenzen gespeichert: {output_dna_file}")
+        #print(f"Protein-Sequenzen gespeichert: {output_protein_file}")
