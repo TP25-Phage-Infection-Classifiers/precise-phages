@@ -25,4 +25,6 @@ total_label_counts = pd.Series(0, index=label_order) # Counts aller Dateien, wir
 # zählt, wie oft jedes Label in einer Datei vorkommt
 def count_labels(df):
     counts = df['Temporal_Class'].value_counts()
-    return counts.reindex(label_order, fill_value=0)
+    result = counts.reindex(label_order, fill_value=0)
+    result.index.name = None
+    return result

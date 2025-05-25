@@ -93,15 +93,16 @@ def generate_output():
         # Innerhalb eines Datensatzes ist die Verteilung oft unausgeglichen:
         # in der Regel dominieren 1 bis 2 Label deutlich, während das dritte Label nur selten vorkommt.
 
-        print(" Datei verarbeitet:", input_file)
+        print("Datei verarbeitet:", input_file)
         #print(" Nach Normalisierung:", output_normalized_file)
         #print(" Normalisierte Phagengene: ", phage_output_file)
         #print(" Bereinigte Phagengene: ", output_cleaned_file)
         #print(" Gelabelte Phagengene: ", output_labeled_file)
-        print(" Ausreißer entfernt:", n_outliers)
-        print(" Exportfile: ", output_export_file)
-        print(" Label Verteilung: ", label_counts)
-
+        print("Ausreißer entfernt:", n_outliers)
+        print("Exportfile: ", output_export_file)
+        print("Label Verteilung:")
+        print(label_counts)
+        print()
 
 generate_output()
 print("Gesamte Label Verteilung: ")
