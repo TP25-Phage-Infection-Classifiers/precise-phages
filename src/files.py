@@ -25,7 +25,7 @@ my_gff3_files=[
     "sprenger_2024/Vibrio_phage_VP882.gff3",
     "zhong_2020/Pseudomonas_phage_phiYY_complete.gff3"
 ]
-my_genome_flies=[
+my_genome_files=[
     "ceyssens_2014/Pseudomonas_phage_phiKZ.fasta",
     "finstrlova_2022/Staphylococcus_phage_K.fasta",
     "guegler_2021/Enterobacteria_phage_T4.fasta",
