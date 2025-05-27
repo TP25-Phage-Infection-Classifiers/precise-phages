@@ -73,7 +73,7 @@ def generate_genome_map():
     genome_map_dir.mkdir(parents=True, exist_ok=True)
 
     for gff_rel, fasta_rel, count_rel in zip(files.my_gff3_files,
-                                            files.my_genome_flies,
+                                            files.my_genome_files,
                                             files.my_team_files ):
         #Absoluten Pfad für jede Eingabedatei zusammenbauen
         gff_path   = files.input_dir / gff_rel     #Gen Annotation (GFF3)
