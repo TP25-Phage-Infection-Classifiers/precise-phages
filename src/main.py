@@ -7,11 +7,12 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord 
 # pip3 install bcbio-gff
 from BCBio import GFF
-import preprocess as pre 
+import prepare_data as pre 
 import label  
 import plots
 import files
-import localize
+import genome_maps
+import dna_aa_seqs
 
 
 def generate_output():
@@ -115,4 +116,5 @@ plots.draw_piechart(label.total_label_counts, "all_files") # pie chart für alle
 images = [Image.open(f).convert("RGB") for f in files.png_files]
 images[0].save("output.pdf", save_all=True, append_images=images[1:])
 
-localize.generate_genome_map()
+genome_maps.generate_genome_map()
+dna_aa_seqs.write_sequences()
