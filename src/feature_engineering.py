@@ -107,7 +107,7 @@ def extract_features(records, ks):
     data = {}
 
     #Durchlaufe alle FASTA Records (Liste von Bio.SeqRecord-Objekten aus FASTA)
-    for r in records:
+    for i, r in enumerate(records):
 
         # Länge und GC Gehalt
         row = {
@@ -123,7 +123,8 @@ def extract_features(records, ks):
             row.update(kmer_freqs(str(r.seq), k))
 
         #Weise die Feature Zeile der  Sequenz-ID zu
-        data[r.id] = row
+        uid = f"{r.id}_{i}"  # verhindert Überschreiben
+        data[uid] = row
 
   #Erstelle ein DataFrame: Zeilen = Gene, Spalten = Features
     return pd.DataFrame.from_dict(data, orient="index")
@@ -133,70 +134,27 @@ def extract_features(records, ks):
 # Hilfsfunktion: eine Datei verarbeiten
 # -----------------------------------------------------------------------------
 
-def process_one(fasta_path: Path, out_path: Path, ks, transpose):
-    #Ausgabe: Dateiname der FASTA Datei
-    print(f"[•] {fasta_path} …")
+def extract_all_features():
+    input_dir = Path("output/database_DNA")
+    output_dir = Path("output/feature_engineering")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    #Lade alle Sequenzen aus der FASTA Datei
-    records = list(SeqIO.parse(fasta_path, "fasta"))
+    ks = [3, 4]
+    transpose = False
 
-    #Wenn keine Sequenzen gefunden wurden
-    if not records:
-        print(f" Keine Sequenzen gefunden in {fasta_path}")
-        return
+    for fasta_path in input_dir.glob("*.fasta"):
+        out_path = output_dir / f"{fasta_path.stem}_features.csv"
 
-    #Features extrahieren
-    df = extract_features(records, ks)
-    #Transponiere die Matrix Features = Zeilen, Gene = Spalten
-    if transpose:
-        df = df.T
+        # Wenn bereits vorhanden, überspringen
+        if out_path.exists():
+            continue
 
-    #Sicherstellen, dass der Zielordner existiert
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    #Speichere die Feature Tabelle als CSV Datei 
-    df.to_csv(out_path)
+        records = list(SeqIO.parse(fasta_path, "fasta"))
+        if not records:
+            continue
 
-    #Damit der Pfad in der Ausgabe besser aussieht
-    try:
-        rel = out_path.relative_to(Path.cwd())
-    except ValueError:
-        rel = out_path
-    print(f"   gespeichert  {rel}")
+        df = extract_features(records, ks)
+        if transpose:
+            df = df.T
 
-
-# CLI
-
-def main():
-    ap = argparse.ArgumentParser()
-
-    #Optionale Argumnte
-    ap.add_argument("fasta", nargs="?", help="Einzelne FASTA‑Datei (optional, wenn --batch)")
-    ap.add_argument("--output", "-o", help="Ausgabe‑CSV (nur Einzelmodus)")
-    ap.add_argument("--k", nargs="+", type=int, default=[3, 4], help="K‑Mer‑Größen")
-    ap.add_argument("--transpose", action="store_true", help="Matrix transponieren (Features=Zeilen)")
-    ap.add_argument("--batch", action="store_true", help="Alle FASTA‑Dateien verarbeiten")
-    args = ap.parse_args()
-
-
-    #Batch: Alle Dateien aus files.py durchlaufen
-    if args.batch:
-        if not input_dir or not my_genome_files:
-            raise RuntimeError("input_dir oder my_genome_files fehlen in files.py")
-        for rel in my_genome_files:
-            fasta_path = input_dir / rel
-            out_path = Path("output/feature-engineering") / f"{Path(rel).stem}_features.csv"
-            process_one(fasta_path, out_path, args.k, args.transpose)
-
-    #Nur eine FASTA Datei verarbeiten
-    else:
-        if not args.fasta:
-            ap.error("FASTA-Datei fehlt (oder --batch verwenden)")
-        fasta_path = Path(args.fasta).expanduser().resolve()
-        if not fasta_path.exists():
-            ap.error(f"FASTA-Datei nicht gefunden: {fasta_path}")
-        out = Path(args.output) if args.output else Path("output/feature-engineering/features.csv")
-        process_one(fasta_path, out, args.k, args.transpose)
-
-
-if __name__ == "__main__":
-    main()
+        df.to_csv(out_path)

@@ -13,6 +13,7 @@ import plots
 import files
 import genome_maps
 import dna_aa_seqs
+import feature_engineering as fe
 
 
 def generate_output():
@@ -118,3 +119,4 @@ images[0].save("output.pdf", save_all=True, append_images=images[1:])
 
 genome_maps.generate_genome_map()
 dna_aa_seqs.write_sequences()
+fe.extract_all_features()
