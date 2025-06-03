@@ -40,4 +40,4 @@ Features:
 - K-Mer-Frequenz
 - Position im Genom (Gencluster)
 - Promotor-Regionen -> Motiverkennung
-- Codon Usage Bias/CAI Codon Adaption Index
+- Codon Usage Bias

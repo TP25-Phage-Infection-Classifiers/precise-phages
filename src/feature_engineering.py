@@ -8,39 +8,34 @@ Features
 * GC-Gehalt (%)
 * Motiv-Vorkommen (TATA-Box, Sigma-70-Motife)
 * K-Mer-Frequenzen (variable k-Liste)
+* Codon Usage Bias
 
-Wie soll man das ausführen:
-----
-* Einzelfile: `python feature_engineering.py path/to/file.fasta [-o out.csv] [--transpose]`
-* Batch:      `python feature_engineering.py --batch [--transpose]`
-  → nutzt `input_dir` und `my_genome_files` aus `src/files.py` und legt alle CSVs unter
-    `output/feature-engineering/` ab.
 """
 
-import argparse
 import importlib.util
 import re
 from collections import Counter
 from itertools import product
 from pathlib import Path
-
 import pandas as pd
 from Bio import SeqIO
+from Bio.Data import CodonTable
+from collections import defaultdict, Counter
 
-#Versuche normalen Import
-try:
-    from src.files import input_dir, my_genome_files
+# #Versuche normalen Import
+# try:
+#     from src.files import input_dir, my_genome_files
 
-#Wenn das Paket nicht erkannt wird:
-except ImportError:
+# #Wenn das Paket nicht erkannt wird:
+# except ImportError:
 
-#src/files.py manuell laden
-    spec = importlib.util.spec_from_file_location("files", Path(__file__).parent / "files.py")
-    files = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(files)  
-    #Zugriff auf die Variablen
-    input_dir = files.input_dir
-    my_genome_files = files.my_genome_files
+# #src/files.py manuell laden
+#     spec = importlib.util.spec_from_file_location("files", Path(__file__).parent / "files.py")
+#     files = importlib.util.module_from_spec(spec)
+#     spec.loader.exec_module(files)  
+#     #Zugriff auf die Variablen
+#     input_dir = files.input_dir
+#     my_genome_files = files.my_genome_files
 
 # -----------------------------------------------------------------------------
 
@@ -56,7 +51,7 @@ MOTIFS = {
 
 #GC Verhätlnis
 def compute_gc(seq: str) -> float:
-    #Sequenz in Großbuchstaben umwandeln, damit man es richtig zählen kann
+    
     seq = seq.upper()
 
     #Anzahl der G und C Basen
@@ -73,7 +68,7 @@ def all_kmers(k: int):
 
 
 def kmer_freqs(seq: str, k: int):
-    # In Großbuchtaben für Zählung
+    
     seq = seq.upper()
 
     #Gesamtzahl möglicher K-Mere
@@ -90,18 +85,50 @@ def kmer_freqs(seq: str, k: int):
 
 
 def motif_counts(seq: str):
-    #DNA Sequenz in Großbuchtaben für Mustererkennung
+    
     seq = seq.upper()
 
-    #Durchlaufe alle Motive und zähle,
-    #wie oft jedes Motiv vorkommt
+    #Durchlaufe alle Motive und zähle, wie oft jedes Motiv vorkommt
     #Als Ergebnis hat man Dictionary mit Namen und Vorkommenshäufigkeit
     return {
         f"motif_{name}": len(p.findall(seq))
           for name, p in MOTIFS.items()
           }
 
-
+def codon_usage_bias(seq: str):
+    
+    seq = seq.upper()
+    
+    # Codons in gegebener Reihenfolge aus Sequenz extrahieren
+    codons = [seq[i:i+3] for i in range(0, len(seq) - 2, 3) if len(seq[i:i+3]) == 3]
+    table = CodonTable.unambiguous_dna_by_id[1]
+    
+    # Codon -> Aminosäure Mapping
+    codon_to_aa = {codon: aa for codon, aa in table.forward_table.items()}
+    
+    # Falls vorhanden Stop-Codons entfernen
+    for stop in table.stop_codons:
+        codon_to_aa.pop(stop, None)
+    
+    # Aminosäure -> Liste aller zugehörigen Codons    
+    aa_to_codons = defaultdict(list)
+    for codon, aa in codon_to_aa.items():
+        aa_to_codons[aa].append(codon)
+    
+    # Codonhäufigkeit wird gezählt    
+    codon_counts = Counter(codons)  
+    
+    rscu = {}
+    for aa, codons_for_aa in aa_to_codons.items():
+        total = sum(codon_counts[c] for c in codons_for_aa)
+        n = len(codons_for_aa)
+        for c in codons_for_aa:
+            val = codon_counts[c] / (total / n) if total > 0 else 0
+            rscu[f"rscu_{c}"] = round(val, 4)  
+    
+    return rscu
+    
+    
 def extract_features(records, ks):
     #Initialisiere leeres Dictionary für alle Sequenzen
     data = {}
@@ -122,6 +149,9 @@ def extract_features(records, ks):
         for k in ks:
             row.update(kmer_freqs(str(r.seq), k))
 
+        #Berechne Codon Usage Bias
+        row.update(codon_usage_bias(str(r.seq)))
+        
         #Weise die Feature Zeile der  Sequenz-ID zu
         uid = f"{r.id}_{i}"  # verhindert Überschreiben
         data[uid] = row
@@ -130,24 +160,16 @@ def extract_features(records, ks):
     return pd.DataFrame.from_dict(data, orient="index")
 
 
-# -----------------------------------------------------------------------------
-# Hilfsfunktion: eine Datei verarbeiten
-# -----------------------------------------------------------------------------
-
 def extract_all_features():
     input_dir = Path("output/database_DNA")
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     ks = [3, 4]
-    transpose = False
+    transpose = True
 
     for fasta_path in input_dir.glob("*.fasta"):
         out_path = output_dir / f"{fasta_path.stem}_features.csv"
-
-        # Wenn bereits vorhanden, überspringen
-        if out_path.exists():
-            continue
 
         records = list(SeqIO.parse(fasta_path, "fasta"))
         if not records:
@@ -157,4 +179,4 @@ def extract_all_features():
         if transpose:
             df = df.T
 
-        df.to_csv(out_path)
+        df.to_csv(out_path, index=True, index_label="ID")
