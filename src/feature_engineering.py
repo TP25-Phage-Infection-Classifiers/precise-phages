@@ -196,7 +196,7 @@ def extract_features(records, ks):
 
 def extract_all_features():
     input_dir = Path("output/database_DNA")
-    gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
+    #gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -211,13 +211,13 @@ def extract_all_features():
             continue
 
         # 📌 GFF3-Datei mit gleichem Namen wie FASTA
-        gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
-        if not gff3_path.exists():
-            print(f"⚠️ Keine GFF3-Datei gefunden für {fasta_path.name}")
-            continue
+        #gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
+        #if not gff3_path.exists():
+            #print(f"⚠️ Keine GFF3-Datei gefunden für {fasta_path.name}")
+            #continue
 
-        gene_ids = [r.id for r in records]
-        positions = extract_positions_for_genes(gff3_path, gene_ids)
+        #gene_ids = [r.id for r in records]
+        #positions = extract_positions_for_genes(gff3_path, gene_ids)
 
         df = extract_features(records, ks)
         if transpose:
