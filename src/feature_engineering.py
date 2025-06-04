@@ -127,7 +127,41 @@ def codon_usage_bias(seq: str):
             rscu[f"rscu_{c}"] = round(val, 4)  
     
     return rscu
-    
+
+# Gen ID (Header) extrahieren, um ID in .gff3 zu finden 
+def get_gene_ids_from_fasta(fasta_path):
+    return [record.id for record in SeqIO.parse(fasta_path, "fasta")]
+
+# start/end,... finden für gen aus fasta datei
+def extract_positions_for_genes(gff3_path, gene_ids):
+    positions = {}
+    gene_id_set = set(gene_ids)
+
+    with open(gff3_path, "r") as f:
+        for line in f:
+            if line.startswith("#") or line.strip() == "":
+                continue
+            cols = line.strip().split("\t")
+            if len(cols) != 9:
+                continue
+
+            seqid, source, feature, start, end, score, strand, phase, attributes = cols
+
+            # Nur Gene berücksichtigen
+            if feature.lower() != "gene":
+                continue
+
+            attr_dict = {}
+            for attr in attributes.split(";"):
+                if "=" in attr:
+                    key, value = attr.split("=", 1)
+                    attr_dict[key] = value
+
+            gene_id = attr_dict.get("ID")
+            if gene_id and gene_id in gene_id_set:
+                positions[gene_id] = (int(start), int(end), strand, seqid)
+
+    return positions       
     
 def extract_features(records, ks):
     #Initialisiere leeres Dictionary für alle Sequenzen
@@ -162,6 +196,7 @@ def extract_features(records, ks):
 
 def extract_all_features():
     input_dir = Path("output/database_DNA")
+    gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -174,6 +209,15 @@ def extract_all_features():
         records = list(SeqIO.parse(fasta_path, "fasta"))
         if not records:
             continue
+
+        # 📌 GFF3-Datei mit gleichem Namen wie FASTA
+        gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
+        if not gff3_path.exists():
+            print(f"⚠️ Keine GFF3-Datei gefunden für {fasta_path.name}")
+            continue
+
+        gene_ids = [r.id for r in records]
+        positions = extract_positions_for_genes(gff3_path, gene_ids)
 
         df = extract_features(records, ks)
         if transpose:
