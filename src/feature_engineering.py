@@ -132,9 +132,11 @@ def codon_usage_bias(seq: str):
 def get_gene_ids_from_fasta(fasta_path):
     return [record.id for record in SeqIO.parse(fasta_path, "fasta")]
 
-# start/end,... finden für gen aus fasta datei
+#Liest Start, Ende und Strangrichtung für Gene aus einer GFF3-Datei
+# Diese Funktion wird für jede FASTA-Datei aufgerufen, wenn die passende GFF3 vorhanden ist
+# Die Gen-IDs aus dem FASTA werden mit denen aus der GFF-Datei abgeg
 def extract_positions_for_genes(gff3_path, gene_ids):
-    positions = {}
+    positions = {}   # speichert: Gen-ID -> (start, end, strand, seqid)
     gene_id_set = set(gene_ids)
 
     with open(gff3_path, "r") as f:
@@ -143,7 +145,7 @@ def extract_positions_for_genes(gff3_path, gene_ids):
                 continue
             cols = line.strip().split("\t")
             if len(cols) != 9:
-                continue
+                continue  # ungültige Zeile überspringen
 
             seqid, source, feature, start, end, score, strand, phase, attributes = cols
 
@@ -163,7 +165,7 @@ def extract_positions_for_genes(gff3_path, gene_ids):
 
     return positions       
     
-def extract_features(records, ks, positions=None):
+def extract_features(records, ks, positions=None): # positions optional übergeben
     #Initialisiere leeres Dictionary für alle Sequenzen
     data = {}
 
@@ -177,12 +179,13 @@ def extract_features(records, ks, positions=None):
         }
 
         gene_id = r.id
+        # Positionen (start, end, strand) als Feature hinzufügen
         if positions and gene_id in positions:
             start, end, strand, _ = positions[gene_id]
             row.update({
                 "start" : start,
                 "end" : end,
-                "strand" : 1 if strand == "+" else -1
+                "strand" : 1 if strand == "+" else -1 # Plus-Strang (5' -> 3'), Minus-Strang (3' <- 5')
             })
 
         #Zähle Promotor Motive
@@ -205,7 +208,7 @@ def extract_features(records, ks, positions=None):
 
 def extract_all_features():
     input_dir = Path("output/database_DNA")
-    gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
+    gff_dir = Path("output/database_GFF")  
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -219,15 +222,17 @@ def extract_all_features():
         if not records:
             continue
 
-        # GFF3-Datei mit gleichem Namen wie FASTA
+        # GFF3-Datei mit gleichem Namen wie FASTA laden
         gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
         if not gff3_path.exists():
             print(f"Keine GFF3-Datei gefunden für {fasta_path.name}")
             continue
 
         gene_ids = [r.id for r in records]
+        #Extrahiere Positionen für bekannte GEN IDs
         positions = extract_positions_for_genes(gff3_path, gene_ids)
 
+        #Übergabe Positionen am Feature Funktion
         df = extract_features(records, ks, positions)
         if transpose:
             df = df.T
