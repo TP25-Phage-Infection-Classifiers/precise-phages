@@ -163,7 +163,7 @@ def extract_positions_for_genes(gff3_path, gene_ids):
 
     return positions       
     
-def extract_features(records, ks):
+def extract_features(records, ks, positions=None):
     #Initialisiere leeres Dictionary für alle Sequenzen
     data = {}
 
@@ -175,6 +175,15 @@ def extract_features(records, ks):
             "length": len(r.seq),
             "GC_content": compute_gc(str(r.seq)),
         }
+
+        gene_id = r.id
+        if positions and gene_id in positions:
+            start, end, strand, _ = positions[gene_id]
+            row.update({
+                "start" : start,
+                "end" : end,
+                "strand" : 1 if strand == "+" else -1
+            })
 
         #Zähle Promotor Motive
         row.update(motif_counts(str(r.seq)))
@@ -196,7 +205,7 @@ def extract_features(records, ks):
 
 def extract_all_features():
     input_dir = Path("output/database_DNA")
-    #gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
+    gff_dir = Path("output/database_GFF")  # GFF3-Ordner muss noch erstellt werden 
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -210,16 +219,16 @@ def extract_all_features():
         if not records:
             continue
 
-        # 📌 GFF3-Datei mit gleichem Namen wie FASTA
-        #gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
-        #if not gff3_path.exists():
-            #print(f"⚠️ Keine GFF3-Datei gefunden für {fasta_path.name}")
-            #continue
+        # GFF3-Datei mit gleichem Namen wie FASTA
+        gff3_path = gff_dir / f"{fasta_path.stem}.gff3"
+        if not gff3_path.exists():
+            print(f"Keine GFF3-Datei gefunden für {fasta_path.name}")
+            continue
 
-        #gene_ids = [r.id for r in records]
-        #positions = extract_positions_for_genes(gff3_path, gene_ids)
+        gene_ids = [r.id for r in records]
+        positions = extract_positions_for_genes(gff3_path, gene_ids)
 
-        df = extract_features(records, ks)
+        df = extract_features(records, ks, positions)
         if transpose:
             df = df.T
 
