@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from pathlib import Path
 from PIL import Image
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord 
@@ -119,4 +120,53 @@ images[0].save("output.pdf", save_all=True, append_images=images[1:])
 
 genome_maps.generate_genome_map()
 dna_aa_seqs.write_sequences()
+
+
+
+# Eingabe-Ordner mit FASTA-Dateien
+fasta_dir = Path("output/database_DNA")
+
+# Ziel-Ordner für GFF-Dateien
+gff_dir = Path("output/database_GFF")
+gff_dir.mkdir(parents=True, exist_ok=True)  # Ordner anlegen, falls nicht vorhanden
+
+# Schleife durch alle FASTA-Dateien im Projekt
+for fasta_path in fasta_dir.glob("*.fasta"):
+    # Zielpfad der zugehörigen GFF-Datei
+    gff_path = gff_dir / (fasta_path.stem + ".gff3")
+
+    # Falls GFF-Datei schon existiert → nichts tun
+    if gff_path.exists():
+        continue
+
+    # FASTA-Sequenzen einlesen
+    records = list(SeqIO.parse(fasta_path, "fasta"))
+    if not records:
+        continue  # Datei enthält keine Gene
+
+    # GFF3-Headerzeile
+    lines = ["##gff-version 3"]
+
+    # Startposition für das erste Gen im GFF
+    start_pos = 100
+
+    # Für jeden Gen-Record eine GFF-Zeile erzeugen
+    for record in records:
+        gene_id = record.id  # ID aus FASTA-Header
+        end_pos = start_pos + len(record.seq) - 1  # Ende = Start + Länge - 1
+
+        # GFF-Zeile zusammenbauen: fester Strang (+), keine Phase, keine Scores
+        line = f"seq1\tRefSeq\tgene\t{start_pos}\t{end_pos}\t.\t+\t.\tID={gene_id}"
+        lines.append(line)
+
+        # Startposition für das nächste Gen
+        start_pos = end_pos + 100
+
+    # GFF-Datei speichern
+    with open(gff_path, "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"GFF-Datei automatisch erzeugt: {gff_path.name}")
+
+
 fe.extract_all_features()
