@@ -1,0 +1,17 @@
+##gff-version 3
+seq1	RefSeq	gene	100	534	.	+	.	ID=gene-DMS3-2
+seq1	RefSeq	gene	634	843	.	+	.	ID=gene-DMS3-3
+seq1	RefSeq	gene	943	2904	.	+	.	ID=gene-DMS3-4
+seq1	RefSeq	gene	3004	3756	.	+	.	ID=gene-DMS3-5
+seq1	RefSeq	gene	3856	4521	.	+	.	ID=gene-DMS3-6
+seq1	RefSeq	gene	4621	5256	.	+	.	ID=gene-DMS3-7
+seq1	RefSeq	gene	5356	5874	.	+	.	ID=gene-DMS3-11
+seq1	RefSeq	gene	5974	6180	.	+	.	ID=gene-DMS3-30
+seq1	RefSeq	gene	6280	6501	.	+	.	ID=gene-DMS3-31
+seq1	RefSeq	gene	6601	7572	.	+	.	ID=gene-DMS3-32
+seq1	RefSeq	gene	7672	8586	.	+	.	ID=gene-DMS3-33
+seq1	RefSeq	gene	8686	9027	.	+	.	ID=gene-DMS3-34
+seq1	RefSeq	gene	9127	9543	.	+	.	ID=gene-DMS3-36
+seq1	RefSeq	gene	9643	10116	.	+	.	ID=gene-DMS3-37
+seq1	RefSeq	gene	10216	10986	.	+	.	ID=gene-DMS3-39
+seq1	RefSeq	gene	11086	14568	.	+	.	ID=gene-DMS3-41

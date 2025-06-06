@@ -1,0 +1,19 @@
+##gff-version 3
+seq1	RefSeq	gene	100	411	.	+	.	ID=gene-phiYY_sL1
+seq1	RefSeq	gene	511	990	.	+	.	ID=gene-phiYY_sL2
+seq1	RefSeq	gene	1090	3120	.	+	.	ID=gene-phiYY_sL3
+seq1	RefSeq	gene	3220	4272	.	+	.	ID=gene-phiYY_sL4
+seq1	RefSeq	gene	4372	6789	.	+	.	ID=gene-phiYY_sL5
+seq1	RefSeq	gene	6889	7968	.	+	.	ID=gene-phiYY_sM1
+seq1	RefSeq	gene	8068	8310	.	+	.	ID=gene-phiYY_sM2
+seq1	RefSeq	gene	8410	9522	.	+	.	ID=gene-phiYY_sM3
+seq1	RefSeq	gene	9622	10326	.	+	.	ID=gene-phiYY_sM4
+seq1	RefSeq	gene	10426	10875	.	+	.	ID=gene-phiYY_sM5
+seq1	RefSeq	gene	10975	11250	.	+	.	ID=gene-phiYY_sS1
+seq1	RefSeq	gene	11350	11487	.	+	.	ID=gene-phiYY_sS2
+seq1	RefSeq	gene	11587	11814	.	+	.	ID=gene-phiYY_sS3
+seq1	RefSeq	gene	11914	12606	.	+	.	ID=gene-phiYY_sS4
+seq1	RefSeq	gene	12706	12954	.	+	.	ID=gene-phiYY_sS5
+seq1	RefSeq	gene	13054	13548	.	+	.	ID=gene-phiYY_sS6
+seq1	RefSeq	gene	13648	14124	.	+	.	ID=gene-phiYY_sS7
+seq1	RefSeq	gene	14224	14655	.	+	.	ID=gene-phiYY_sS8
