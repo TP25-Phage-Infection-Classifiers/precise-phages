@@ -164,6 +164,26 @@ def extract_positions_for_genes(gff3_path, gene_ids):
                 positions[gene_id] = (int(start), int(end), strand, seqid)
 
     return positions       
+
+# Labels aus transponierten export-file laden    
+def load_labels(label_file):
+    df_labels = pd.read_csv(label_file, header=None)
+    # Erste Zeile (ab der 2. Spalte) sind Gen-IDs
+    gene_ids = df_labels.iloc[0, 1:].tolist()
+    # Zweite Zeile (ab der 2. Spalte) sind die Labels
+    labels = df_labels.iloc[1, 1:].tolist()
+    # Erstelle ein Dictionary: {Gen-ID: Label}
+    return dict(zip(gene_ids, labels))
+    
+# Labels als weitere Zeile in output .csv-Datei laden
+def add_label_row(df, label_dict):
+    labels = []
+    for gene in df.columns:
+        base_gene = gene.split("_")[0]  # "gene-T4p161_0" -> "gene-T4p161"
+        label = label_dict.get(base_gene, "unknown")
+        labels.append(label)
+    df.loc["Temporal_Class"] = labels
+    return df
     
 def extract_features(records, ks, positions=None): # positions optional übergeben
     #Initialisiere leeres Dictionary für alle Sequenzen
@@ -212,6 +232,10 @@ def extract_all_features():
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Label_file laden
+    label_file = Path("output/zusammengefuegt_transponiert.csv")
+    label_dict = load_labels(label_file)
+
     ks = [3, 4]
     transpose = True
 
@@ -237,4 +261,6 @@ def extract_all_features():
         if transpose:
             df = df.T
 
-        df.to_csv(out_path, index=True, index_label="ID")
+        # Labelzeile hinzufügen
+        df = add_label_row(df, label_dict)
+        df.to_csv(out_path, index=True, index_label="GeneID")
