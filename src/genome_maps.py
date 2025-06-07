@@ -49,16 +49,20 @@ def plot_genome_map(genes_df, genome_length, title, output_path):
     else:
         genes_df['Temporal_Class'] = genes_df['Temporal_Class'].fillna('undefined')
 
+    # Start und Ende in Prozent umrechnen
+    genes_df['start_pct'] = (genes_df['start'] / genome_length) * 100
+    genes_df['end_pct'] = (genes_df['end'] / genome_length) * 100    
+
     for _, row in genes_df.iterrows():
         color = colors.get(row['Temporal_Class'], '#999999')
-        start = row['start']
-        width = row['end'] - row['start']
+        start = row['start_pct']
+        width = row['end_pct'] - row['start_pct']
         ax.add_patch(mpatches.Rectangle((start, 0), width, 1, color=color))
 
-    ax.set_xlim(0, genome_length + 1000)
+    ax.set_xlim(0, 100)
     ax.set_ylim(0,1)
     ax.set_yticks([])
-    ax.set_xlabel('Genomposition (bp)')
+    ax.set_xlabel('Genomposition (%)')
     ax.set_title(title)
     legend = [mpatches.Patch(color=clr, label=lbl) for lbl, clr in colors.items()]
     ax.legend(handles=legend, loc='upper right')
