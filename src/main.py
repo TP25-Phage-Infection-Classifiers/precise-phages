@@ -119,6 +119,7 @@ images = [Image.open(f).convert("RGB") for f in files.png_files]
 images[0].save("output.pdf", save_all=True, append_images=images[1:])
 
 genome_maps.generate_genome_map()
+genome_maps.generate_temporal_class_position_distributions()
 dna_aa_seqs.write_sequences()
 
 

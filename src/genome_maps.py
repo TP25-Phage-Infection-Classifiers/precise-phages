@@ -115,3 +115,65 @@ def generate_genome_map():
                         out_img)
 
         # print(f"Genomkarte gespeichert: {out_img}")
+
+
+def plot_temporal_class_position_distribution(genes_df, genome_length, output_path):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Umrechnung auf Prozentposition (z.B. Startposition)
+    genes_df['start_pct'] = (genes_df['start'] / genome_length) * 100
+
+    # Temporal Classes definieren und Farben
+    classes = ['early', 'middle', 'late', 'undefined']
+    colors = {'early':'#fc8d62', 'middle':'#8da0cb', 'late':'#e78ac3', 'undefined':'#cccccc'}
+
+    plt.figure(figsize=(12,4))
+
+    bins = np.linspace(0, 100, 50)  # 50 bins von 0 bis 100%
+
+    for tc in classes:
+        subset = genes_df[genes_df['Temporal_Class'] == tc]
+        if subset.empty:
+            continue
+        plt.hist(subset['start_pct'], bins=bins, alpha=0.6, label=tc, color=colors[tc])
+
+    plt.xlabel('Genomposition (%)')
+    plt.ylabel('Anzahl Gene')
+    plt.title('Verteilung der Gene entlang des Genoms nach Temporal Class')
+    plt.legend(title='Temporal Class')
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+def generate_temporal_class_position_distributions():
+    import numpy as np
+
+    output_dir = Path("output/temporal_class_position_distributions")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for gff_rel, fasta_rel, count_rel in zip(files.my_gff3_files,
+                                            files.my_genome_files,
+                                            files.my_team_files):
+        gff_path = files.input_dir / gff_rel
+        fasta_path = files.input_dir / fasta_rel
+
+        label_path = (files.output_dir / Path(count_rel).parent /
+                      f"{Path(count_rel).stem}_export.csv")
+        if not label_path.exists():
+            print(f"Überspringe {count_rel}: Label-Datei fehlt")
+            continue
+
+        # Daten laden
+        gff_genes = read_gff3(gff_path)
+        labels = read_labels(label_path)
+
+        merged = pd.merge(gff_genes, labels, on='GeneID', how='left')
+        merged["Temporal_Class"] = merged["Temporal_Class"].fillna("undefined")
+
+        genome_length = read_fasta_length(fasta_path)
+
+        out_img = output_dir / f"{gff_path.stem}_temporal_class_position_distribution.png"
+
+        # Plot-Funktion intern verwenden
+        plot_temporal_class_position_distribution(merged, genome_length, out_img)
+        print(f"Positionsverteilung gespeichert: {out_img}")
