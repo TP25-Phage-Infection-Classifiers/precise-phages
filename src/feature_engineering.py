@@ -232,7 +232,7 @@ def extract_all_features():
     output_dir = Path("output/feature_engineering")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Label_file laden
+    # Label_file
     label_file = Path("output/zusammengefuegt_transponiert.csv")
     label_dict = load_labels(label_file)
 
