@@ -169,7 +169,7 @@ for fasta_path in fasta_dir.glob("*.fasta"):
     lines = ["##gff-version 3"]
 
     # Startposition für das erste Gen im GFF
-    start_pos = 100
+    start_pos = 1
 
     # Für jeden Gen-Record eine GFF-Zeile erzeugen
     for record in records:
