@@ -21,6 +21,8 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.Data import CodonTable
 from collections import defaultdict, Counter
+import glob
+import os
 
 # #Versuche normalen Import
 # try:
@@ -161,7 +163,7 @@ def extract_positions_for_genes(gff3_path, gene_ids):
 
             gene_id = attr_dict.get("ID")
             if gene_id and gene_id in gene_id_set:
-                positions[gene_id] = (int(start), int(end), strand, seqid)
+                positions[gene_id] = (int(start), int(end), seqid)
 
     return positions       
 
@@ -178,10 +180,12 @@ def load_labels(label_file):
 # Labels als weitere Zeile in output .csv-Datei laden
 def add_label_row(df, label_dict):
     labels = []
+    
     for gene in df.columns:
-        base_gene = gene.split("_")[0]  # "gene-T4p161_0" -> "gene-T4p161"
+        base_gene = "_".join(gene.split("_")[:-1])  # "gene-T4p161_0" -> "gene-T4p161"
         label = label_dict.get(base_gene, "unknown")
         labels.append(label)
+            
     df.loc["Temporal_Class"] = labels
     return df
     
@@ -201,11 +205,11 @@ def extract_features(records, ks, positions=None): # positions optional übergeb
         gene_id = r.id
         # Positionen (start, end, strand) als Feature hinzufügen
         if positions and gene_id in positions:
-            start, end, strand, _ = positions[gene_id]
+            start, end, _ = positions[gene_id]
             row.update({
                 "start" : start,
-                "end" : end,
-                "strand" : 1 if strand == "+" else -1 # Plus-Strang (5' -> 3'), Minus-Strang (3' <- 5')
+                "end" : end
+                # "strand" : 1 if strand == "+" else -1 # Plus-Strang (5' -> 3'), Minus-Strang (3' <- 5')
             })
 
         #Zähle Promotor Motive
@@ -264,3 +268,20 @@ def extract_all_features():
         # Labelzeile hinzufügen
         df = add_label_row(df, label_dict)
         df.to_csv(out_path, index=True, index_label="GeneID")
+        
+
+# Um alle Dateien zu einer zusammenzufügen für die Training-/Testdaten Splits       
+def merge_csvs(input_folder: str, output_file: str = "output/feature_engineering_merged.csv"):
+    
+    file_paths = glob.glob(os.path.join(input_folder, "*.csv"))
+    if not file_paths:
+        print("Keine CSV-Dateien gefunden.")
+        return
+    
+    merged_df = pd.read_csv(file_paths[0], index_col=0)
+    
+    for file in file_paths[1:]:
+        df = pd.read_csv(file, index_col=0)
+        merged_df = pd.concat([merged_df, df], axis=1)
+        
+    merged_df.to_csv(output_file)

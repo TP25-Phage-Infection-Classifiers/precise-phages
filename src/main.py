@@ -125,23 +125,19 @@ dateien = glob.glob('output/**/*_export.csv', recursive=True)
 # Zusamenfügen aller _export.csv Dateien
 df_liste = [pd.read_csv(datei) for datei in dateien]
 zusammen = pd.concat(df_liste, ignore_index=True)
+zusammen = zusammen[zusammen['Temporal_Class'] != 'undefined']
 zusammen.to_csv('output/zusammengefuegt.csv', index=False)
 
-# Transponieren der zusammengefuegt.csv Datei
-
 # Datei einlesen
-df = pd.read_csv('zusammengefuegt.csv')
+df = pd.read_csv('output/zusammengefuegt.csv')
 
 # Transponieren, sodass GeneIDs Spalten werden und Temporal_Class die Werte sind
 df_transponiert = df.set_index('GeneID').T
-
-# Optional: In eine neue CSV speichern
 df_transponiert.to_csv('output/zusammengefuegt_transponiert.csv')
 
 genome_maps.generate_genome_map()
 genome_maps.generate_temporal_class_position_distributions()
 dna_aa_seqs.write_sequences()
-
 
 
 # Eingabe-Ordner mit FASTA-Dateien
@@ -191,3 +187,4 @@ for fasta_path in fasta_dir.glob("*.fasta"):
 
 
 fe.extract_all_features()
+fe.merge_csvs("output/feature_engineering")
