@@ -7,18 +7,23 @@ import warnings #*
 from pathlib import Path 
 import shutil
 
-""" # 1) Binary & DB finden
+# 1) Binary & DB finden
 PSIPRED_BIN = os.getenv("PSIPRED_BIN") or shutil.which("run_psipred.pl")
 PSIPRED_DB  = os.getenv("PSIPRED_DB")
 
 if not PSIPRED_BIN or not PSIPRED_DB:
     raise RuntimeError("PSIPRED nicht gefunden - bitte Env-Variablen setzen oder bootstrap-Script ausführen.")
 
+COLABFOLD_BIN = os.getenv("COLABFOLD_BIN") or shutil.which("colabfold_batch")
+
+if not COLABFOLD_BIN:
+    print("ColabFold nicht gefunden — Tertiärstruktur wird übersprungen.")
+
 # 2) Pfade
 FASTA_DIR = files.output_dir / "database_Protein"
 OUT_DIR   = Path("output/structure_features")
-OUT_DIR.mkdir(parents=True, exist_ok=True) """
-
+OUT_DIR.mkdir(parents=True, exist_ok=True) 
+PSIPRED_DBNAME = "uniref90" 
 
 
 
@@ -35,7 +40,7 @@ def run_psipred(fasta_path: Path, out_prefix: Path) -> Path:
         str(fasta_path)
     ]
     print(f"Running PSIPRED: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, cwd=out_prefix.parent)
     return ss2_file
 
 #Parsing der SS2-Datei für H E C Verteilung
@@ -80,7 +85,9 @@ def parse_psipred(ss2_file: Path) -> dict:
 # Wir suchen nach dem ersten *_model_1.pdb
 
 def run_colabfold(fasta_path, out_prefix):
-    
+    if not COLABFOLD_BIN:
+        return None
+
     pdb_file = out_prefix.with_suffix(".pdb")
     if pdb_file.exists():
         return pdb_file
@@ -152,7 +159,7 @@ def build_structure_feature_table():
 
         # --- Sekundärstruktur ---
         try:
-            ss2 = run_psipred(str(fasta_path), str(out_prefix))
+            ss2 = run_psipred(fasta_path, out_prefix)
             sec_feats = parse_psipred(ss2)
         except Exception as e:
             warnings.warn(f"PSIPRED failed for {gene_id}: {e}")
@@ -162,7 +169,7 @@ def build_structure_feature_table():
 
         # --- Tertiärstruktur ---
         try:
-            pdb = run_colabfold(str(fasta_path), out_prefix)
+            pdb = run_colabfold(fasta_path, out_prefix)
             tert_feats = extract_tertiary_features(pdb)
         except Exception as e:
             warnings.warn(f"ColabFold/DSSP failed for {gene_id}: {e}")
@@ -176,4 +183,10 @@ def build_structure_feature_table():
     df = pd.DataFrame(rows)
     df.to_csv(OUT_DIR / "structure_features.csv", index=False)
     print(" Struktur-Features gespeichert:", OUT_DIR / "structure_features.csv")
+
+
+
+if __name__ == "__main__":
+    build_structure_feature_table()
+
 

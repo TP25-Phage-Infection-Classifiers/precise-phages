@@ -1,0 +1,37 @@
+name: phage-ml
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python-Basis
+  - python=3.10
+
+  # PSIPRED (Sekundärstruktur)
+  - psipred=4.01
+
+  # BLAST für PSIPRED
+  - ncbi-blast
+
+  # BioPython (PDBParser, DSSP, FASTA Handling)
+  - biopython
+
+  # Data Science & ML
+  - pandas
+  - scikit-learn
+  - pyyaml
+
+  # Visualisierung
+  - matplotlib
+  - seaborn
+
+  # optionaler Parser
+  - tqdm
+
+  # pip-Pakete 
+  - pip
+  - pip:
+    
+
+
