@@ -5,7 +5,7 @@
  seiner Funktion zuordnen kann, so kann ich die DNA-Segmente in early, middle und late stages unterscheiden. 
  Dies ist aber noch kein allgemeines Merkmal, also suchen wir weiter. 
 
-Gefundene Features:  - CG-Gehlat in der DNA und RNA:
+Gefundene Features: - CG-Gehlat in der DNA und RNA:
 
 - Codon Nutzung: zum Beispiel werden bei „late“ Gene des Codons eher 
 an den die Wirtszelle angepasst.
