@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
 from sklearn.metrics import accuracy_score, f1_score
-
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
 import pprint
 
 
@@ -18,14 +21,8 @@ import pprint
 
 # Daten laden
 data = pd.read_csv("output/feature_engineering_merged.csv")
-
-# Liste aller Phagennamen
 phagenames = ["PHIKZ", "CPT_phageK", "T4", "phage515_", "DMS3", "VPVV882", "phiYY"]
-
-# Phagen Gene-IDS einlesen
-# gene_IDs = Liste von allen GeneIDs
-gene_IDs = data.columns.tolist()[1:]
-
+gene_IDs = data.columns.tolist()[1:] #Liste von allen GeneIDs
 # Dictionary mit allen Phagennamen und leeren Listen (hier kommen die GeneIDS dann rein)
 phage_to_genes = {phage: [] for phage in phagenames}
 
@@ -35,8 +32,6 @@ for gene in gene_IDs:
         if gene.startswith(f"gene-{phage}"):
             phage_to_genes[phage].append(gene)
             break  
-
-# pprint.pprint(phage_to_genes)
 
 # phage_to_genes = Pro Phage eine Liste, die alle Gene der Phage speichert
 # --> Für saubere Trennung von Test- und Trainingsdaten
@@ -51,78 +46,103 @@ features = data.iloc[:-1, 1:].transpose()
 features = features.apply(pd.to_numeric)
 
 # Model
-model = RandomForestClassifier(random_state=42)
+models = {
+    "Random Forest": RandomForestClassifier(random_state=42),
+    "SVM": SVC(kernel='rbf', probability=True, random_state=42),
+    "XGBoost": XGBClassifier(eval_metric='mlogloss', random_state=42)
+}
 
-# 1. Klassische 5-fache Cross-Validation
-accuracy_scores = cross_val_score(model, features, labels, cv=10, scoring='accuracy')
-f1_scores = cross_val_score(model, features, labels, cv=10, scoring='f1_macro')
+def evaluate_model(name, model, features, labels):
+    results = {}
+    # Labels encoden für XGBoost (braucht numerische Labels)
+    le = LabelEncoder()
+    y_encoded = pd.Series(le.fit_transform(labels), index=labels.index)
+    if "XGBoost" in name:
+        y_to_use = y_encoded
+    else:
+        y_to_use = labels
 
-print("=== 5-Fold Cross-Validation ===")
-print("Accuracy pro Fold:", accuracy_scores)
-print("F1 score pro Fold:", f1_scores)
-print("Mean Accuracy:", np.mean(accuracy_scores))
-print("Mean F1 score:", np.mean(f1_scores))
+    # 1. Klassische 5-fache Cross-Validation
+    acc_scores = cross_val_score(model, features, y_to_use, cv=10, scoring='accuracy')
+    f1_scores = cross_val_score(model, features, y_to_use, cv=10, scoring='f1_macro')
+    results['5-Fold Mean Accuracy'] = np.mean(acc_scores)
+    results['5-Fold Mean F1'] = np.mean(f1_scores)
 
-# 2. Stratified K-Fold Cross-Validation
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-acc_list = []
-f1_list = []
+    # 2. Stratified K-Fold Cross-Validation
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    acc_list = []
+    f1_list = []
 
-for train_idx, test_idx in skf.split(features, labels):
-    X_train, X_test = features.iloc[train_idx], features.iloc[test_idx]
-    y_train, y_test = labels.iloc[train_idx], labels.iloc[test_idx]
+    for train_idx, test_idx in skf.split(features, y_to_use):
+        X_train, X_test = features.iloc[train_idx], features.iloc[test_idx]
+        y_train, y_test = y_to_use.iloc[train_idx], y_to_use.iloc[test_idx]
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        acc_list.append(accuracy_score(y_test, y_pred))
+        f1_list.append(f1_score(y_test, y_pred, average='macro'))
+        
+    results['Stratified K-Fold Mean Accuracy'] = np.mean(acc_list)
+    results['Stratified K-Fold Mean F1'] = np.mean(f1_list)
 
+    # 3. Holdout-Split (80/20)
+    X_train, X_test, y_train, y_test = train_test_split(
+        features, y_to_use, test_size=0.2, random_state=42, stratify=y_to_use
+    )
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+    results['Holdout Accuracy'] = accuracy_score(y_test, y_pred)
+    results['Holdout F1'] = f1_score(y_test, y_pred, average='macro')
 
-    acc_list.append(accuracy_score(y_test, y_pred))
-    f1_list.append(f1_score(y_test, y_pred, average='macro'))
+    # 4. Leave-One-Phage-Out Cross-Validation (jede Phage einmal als Testset)
+    lopo_acc = []
+    lopo_f1 = []
+    for test_phage in phagenames:
+        test_genes = phage_to_genes[test_phage]
+        train_genes = [gene for gene in features.index if gene not in test_genes]
+        X_train = features.loc[train_genes]
+        y_train = y_to_use.loc[train_genes]
+        X_test = features.loc[test_genes]
+        y_test = y_to_use.loc[test_genes]
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        lopo_acc.append(accuracy_score(y_test, y_pred))
+        lopo_f1.append(f1_score(y_test, y_pred, average='macro'))
+        # Optional: Pro Phage anzeigen
+        print(f"[{name}] Test-Phage: {test_phage}, Accuracy={lopo_acc[-1]:.4f}, F1={lopo_f1[-1]:.4f}")
 
-print("\n=== Stratified K-Fold (5-fold) ===")
-print("Accuracy pro Fold:", acc_list)
-print("F1 Score pro Fold:", f1_list)
-print("Mean Accuracy:", np.mean(acc_list))
-print("Mean F1 Score:", np.mean(f1_list))
+    results['Leave-One-Phage-Out Mean Accuracy'] = np.mean(lopo_acc)
+    results['Leave-One-Phage-Out Mean F1'] = np.mean(lopo_f1)
+        
+    return results
 
-# 3. Holdout-Split (80/20)
-X_train, X_test, y_train, y_test = train_test_split(
-    features, labels, test_size=0.2, random_state=42, stratify=labels
-)
+comparison_results = {}
 
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-holdout_accuracy = accuracy_score(y_test, y_pred)
-holdout_f1 = f1_score(y_test, y_pred, average='macro')
+for name, model in models.items():
+    print(f"\nEvaluating {name}...")
+    comparison_results[name] = evaluate_model(name, model, features, labels)
 
-print("\n=== Holdout (80/20 Split) ===")
-print("Holdout Accuracy:", holdout_accuracy)
-print("Holdout F1-Score:", holdout_f1)
+# Ergebnisse als DataFrame
+results_df = pd.DataFrame(comparison_results).T
+results_df.to_csv("output/models/Vergleichstabelle.csv", index=True)
+print("\n=== Vergleichstabelle ===")
+print(results_df)
 
-# 4. Leave-One-Phage-Out Cross-Validation (jede Phage einmal als Testset)
-print("\n=== Leave-One-Phage-Out Cross-Validation ===")
+# Ergebnisse plotten
+results_df[['5-Fold Mean Accuracy', 'Stratified K-Fold Mean Accuracy', 'Holdout Accuracy', 'Leave-One-Phage-Out Mean Accuracy']].plot(
+    kind='bar', figsize=(10, 6), color=['#FF9999', '#99FF99', '#9999FF', '#FFD699'])
+plt.title("Accuracy Vergleich der Modelle")
+plt.ylabel("Accuracy")
+plt.xticks(rotation=45)
+plt.ylim(0, 1)
+plt.tight_layout()
+plt.savefig("output/models/accuracy_comparison.png")
 
-results = {}
+results_df[['5-Fold Mean F1', 'Stratified K-Fold Mean F1', 'Holdout F1', 'Leave-One-Phage-Out Mean F1']].plot(
+    kind='bar', figsize=(10, 6), color=['#FF9999', '#99FF99', '#9999FF', '#FFD699'])
+plt.title("F1-Score Vergleich der Modelle")
+plt.ylabel("F1 Score")
+plt.xticks(rotation=45)
+plt.ylim(0, 1)
+plt.tight_layout()
+plt.savefig("output/models/f1_comparison.png")
 
-for test_phage in phagenames:
-    test_genes = phage_to_genes[test_phage]
-    train_genes = [gene for gene in features.index if gene not in test_genes]
-    
-    X_train = features.loc[train_genes]
-    y_train = labels.loc[train_genes]
-    
-    X_test = features.loc[test_genes]
-    y_test = labels.loc[test_genes]
-    
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    
-    acc = accuracy_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred, average='macro')
-    
-    results[test_phage] = {"accuracy": acc, "f1_score": f1}
-
-for phage, metrics in results.items():
-    print(f"Test-Phage: {phage}")
-    print(f"  Accuracy: {metrics['accuracy']:.4f}")
-    print(f"  F1 Score: {metrics['f1_score']:.4f}")
-    print()
