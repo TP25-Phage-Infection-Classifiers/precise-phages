@@ -1,3 +1,4 @@
+HEADER    DUMMY HEADER
 MODEL     1                                                                     
 ATOM      1  N   MET A   1     -47.219 -16.922   1.690  1.00 41.00           N  
 ATOM      2  CA  MET A   1     -47.094 -16.453   0.311  1.00 41.00           C  
