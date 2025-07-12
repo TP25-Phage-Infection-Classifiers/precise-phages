@@ -68,12 +68,12 @@ def extract_structure_features(pdb_dir: Path, output_csv: Path):
 
             ss_counts = {"H": 0, "E": 0, "C": 0}
             asa_total = 0.0
+            asa_residues = 0 
 
             for key in dssp.keys():
-                dssp_data = dssp[key]
-                ss = dssp_data[2]   #Sekundärstruktur
-                asa = dssp_data[3]  #Oberfläche
 
+                ss  = dssp[key][1]          
+                asa = dssp[key][2] 
 
                 #Klassifikation der Sekundärstruktur
                 if ss in ("H", "G", "I"): #Alpha-Helix, 3₁₀-Helix, π-Helix
@@ -83,16 +83,26 @@ def extract_structure_features(pdb_dir: Path, output_csv: Path):
                 else:
                     ss_counts["C"] += 1 #Kurven, Turns, ungeordnet
 
-                asa_total += asa
+                 # ASA addieren – nur wenn numerisch
+                try:
+                    asa_val = float(asa)
+                    asa_total += asa_val
+                    asa_residues += 1
+                except ValueError:
+                    pass                    # '-' wird übersprungen
 
             # Prozentuale Verteilung und mittlere ASA berechnen
             total = sum(ss_counts.values())
+            if total == 0:
+                print("DSSP WARN:", pdb_file, "enthält 0 Residues - wurde DSSP korrekt ausgeführt?")
+
             if total > 0:
                 percent_helix = ss_counts["H"] / total 
                 percent_sheet = ss_counts["E"] / total 
                 percent_coil = ss_counts["C"] / total 
-                asa_mean = asa_total / total
+                asa_mean = asa_total / asa_residues if asa_residues else 0.0
 
+               
         except Exception as e:
             print(f"DSSP fehlgeschlagen für {pdb_file.name}: {e}")
 
@@ -105,7 +115,7 @@ def extract_structure_features(pdb_dir: Path, output_csv: Path):
             "percent_helix": round(percent_helix, 3),
             "percent_sheet": round(percent_sheet, 3),
             "percent_coil": round(percent_coil, 3),
-            "ASA_mean": round(asa_mean, 2),
+            #"ASA_mean": round(asa_mean, 3),
         })
     
     #Falls keine .pdb Dateien gefunden werden
