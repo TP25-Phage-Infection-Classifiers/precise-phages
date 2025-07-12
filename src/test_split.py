@@ -23,7 +23,7 @@ import pprint
 
 
 # Daten laden
-data = pd.read_csv("output/feature_engineering_merged.csv")
+data = pd.read_csv("output/feature_matrix_with_structure.csv")
 phagenames = ["PHIKZ", "CPT_phageK", "T4", "phage515_", "DMS3", "VPVV882", "phiYY"]
 gene_IDs = data.columns.tolist()[1:] #Liste von allen GeneIDs
 # Dictionary mit allen Phagennamen und leeren Listen (hier kommen die GeneIDS dann rein)
