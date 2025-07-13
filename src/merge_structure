@@ -69,19 +69,19 @@ def merge_features(feature_csv: Path, struct_csv: Path, out_csv: Path) -> None:
         .rename(columns={"GeneID_x": "GeneID"})
     )
 
-    # Transponieren
-    #merged_t = merged.set_index("GeneID").T.reset_index()
-    #merged_t = merged_t.rename(columns={"index": "GeneID"})
+    #Transponieren
+    merged_t = merged.set_index("GeneID").T.reset_index()
+    merged_t = merged_t.rename(columns={"index": "GeneID"})
 
-    # Temporal-Class als letzte Zeile
-    #if "Temporal_Class" in merged_t["GeneID"].values:
-     #   temporal_row = merged_t[merged_t["GeneID"] == "Temporal_Class"]
-      #  merged_t = merged_t[merged_t["GeneID"] != "Temporal_Class"]
-        #merged_t = pd.concat([merged_t, temporal_row], ignore_index=True)
+    #Temporal-Class als letzte Zeile
+    if "Temporal_Class" in merged_t["GeneID"].values:
+        temporal_row = merged_t.loc[merged_t["GeneID"] == "Temporal_Class"]
+        merged_t = merged_t.loc[merged_t["GeneID"] != "Temporal_Class"]
+        merged_t = pd.concat([merged_t, temporal_row], ignore_index=False)
 
     # Speichern -------------------------------------------------
-    merged.to_csv(out_csv, index=False)
-    print(f" Datei gespeichert: {out_csv.resolve()}")
+    merged_t.to_csv(out_csv, index=False)
+    print(f" Transponierte Datei gespeichert: {out_csv.resolve()}")
 
 
 # ---------- Skripteinstieg ---------------------------------------------------
