@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
 """
-merge_structure_features.py
-
 Fügt struktur-basierte Features zur bestehenden Feature-Matrix hinzu.
-Voreingestellte Pfade zeigen in das Verzeichnis „output/“.
 """
 
 from pathlib import Path
@@ -83,8 +79,7 @@ def merge_features(feature_csv: Path, struct_csv: Path, out_csv: Path) -> None:
     merged_t.to_csv(out_csv, index=False)
     print(f" Transponierte Datei gespeichert: {out_csv.resolve()}")
 
-
-# ---------- Skripteinstieg ---------------------------------------------------
+#Main
 if __name__ == "__main__":
     cwd = Path.cwd()
 
