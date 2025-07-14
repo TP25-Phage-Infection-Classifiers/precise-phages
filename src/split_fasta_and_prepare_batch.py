@@ -1,32 +1,23 @@
 """
-Split multi-FASTA files into single-sequence FASTA files
-and write a ColabFold-batch command list.
-
-Input-Dir :  output/cleaned_Protein
-Output-Dir:  output/cleaned_Protein_split
-Cmd-File  :  colabfold_batch_cmd.txt   (in Output-Dir)
-
-Run with:  python split_fasta_and_prepare_batch.py
+split_fasta_per_protein.py
+---------------------------------
+• liest alle *.fasta im Ordner output/cleaned_Protein
+• legt zu jeder Datei einen Unterordner *_split an
+• schreibt dort pro Sequenz eine neue FASTA-Datei
 """
 
 from pathlib import Path
 from Bio import SeqIO   
 
-# --- Pfade 
 BASE = Path(r"C:\Users\sanja\OneDrive\Documents\GitHub\precise-phages\output")
-INPUT_DIR  = BASE / "cleaned_Protein"
-SPLIT_DIR  = BASE / "cleaned_Protein_split"
-CMD_FILE   = SPLIT_DIR / "colabfold_batch_cmd.txt"
-# -----------------------------------------------------------------------------
+IN_DIR = BASE / "cleaned_Protein"
 
-SPLIT_DIR.mkdir(parents=True, exist_ok=True)
-cmd_parts = []
-
-for fasta in INPUT_DIR.glob("*.fasta"):
+for fasta in IN_DIR.glob("*.fasta"):
+    split_dir = IN_DIR / (fasta.stem + "_split")
+    split_dir.mkdir(exist_ok=True)
+    count = 0
     for rec in SeqIO.parse(fasta, "fasta"):
-        # Dateiname = FASTA-Header
-        out_path = SPLIT_DIR / f"{rec.id}.fasta"
-        SeqIO.write(rec, out_path, "fasta")
-        cmd_parts.append(str(out_path))
-print(f"{len(cmd_parts)} Sequenzen geschrieben nach {SPLIT_DIR}")
-
+        out_fasta = split_dir / f"{rec.id}.fasta"
+        SeqIO.write(rec, out_fasta, "fasta")
+        count += 1
+    print(f" {count:>4} Proteine → {split_dir}")
