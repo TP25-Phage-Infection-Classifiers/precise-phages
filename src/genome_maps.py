@@ -6,6 +6,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from BCBio import GFF
 import files
+import numpy as np
 
 ## Genomkarte erstellen
 
@@ -118,8 +119,6 @@ def generate_genome_map():
 
 
 def plot_temporal_class_position_distribution(genes_df, genome_length, output_path):
-    import numpy as np
-    import matplotlib.pyplot as plt
 
     # Umrechnung auf Prozentposition (z.B. Startposition)
     genes_df['start_pct'] = (genes_df['start'] / genome_length) * 100
@@ -146,7 +145,6 @@ def plot_temporal_class_position_distribution(genes_df, genome_length, output_pa
     plt.savefig(output_path)
     plt.close()
 def generate_temporal_class_position_distributions():
-    import numpy as np
 
     output_dir = Path("output/temporal_class_position_distributions")
     output_dir.mkdir(parents=True, exist_ok=True)
