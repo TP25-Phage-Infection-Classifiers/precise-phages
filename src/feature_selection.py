@@ -6,10 +6,13 @@ import shap
 import matplotlib.pyplot as plt
 
 # feature Datei wird eingelesen
-df = pd.read_csv("output/feature_engineering_merged.csv", index_col=0)
+df = pd.read_csv("output/feature_matrix_with_structure.csv")
 
-y = df.loc["Temporal_Class"]
-X = df.drop("Temporal_Class", axis=0).T
+y = df["Temporal_Class"]
+X = df.drop(columns=["GeneID", "Temporal_Class"])
+
+# Index setzen auf GeneID
+X.index = df["GeneID"]
 
 # Train und Testsplit
 X_train, X_test, y_train, y_test = train_test_split(
@@ -51,11 +54,14 @@ to_drop = sorted(irrelevant_perm | irrelevant_shap)
 
 X_reduced = X.drop(columns=to_drop)
 
-df_reduced = pd.concat([
-    X_reduced.T,                           # transponierte Features
-    pd.DataFrame([y], index=["Temporal_Class"])  # Klasse als neue Zeile
-])
-
+df_reduced = X_reduced.copy()
+df_reduced["GeneID"] = X.index
+df_reduced["Temporal_Class"] = y.values
+cols = ["GeneID"] + [col for col in df_reduced.columns if col not in ["GeneID", "Temporal_Class"]] + ["Temporal_Class"]
+df_reduced = df_reduced[cols]
 df_reduced.to_csv("output/feature_engineering_reduced.csv")
+
+df_reduced.to_csv("output/feature_matrix_with_structure_reduced.csv", index=False)
 print("Neue Datei geschrieben: output/feature_engineering_reduced.csv")
+print(f"Entfernte Features: {len(to_drop)}")
 

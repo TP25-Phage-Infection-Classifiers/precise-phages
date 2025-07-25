@@ -12,17 +12,14 @@ Features
 
 """
 
-import importlib.util
-import re
-from collections import Counter
+import re, os, glob
 from itertools import product
 from pathlib import Path
 import pandas as pd
 from Bio import SeqIO
 from Bio.Data import CodonTable
 from collections import defaultdict, Counter
-import glob
-import os
+from typing import List
 
 # #Versuche normalen Import
 # try:
@@ -130,9 +127,6 @@ def codon_usage_bias(seq: str):
     
     return rscu
 
-# Gen ID (Header) extrahieren, um ID in .gff3 zu finden 
-def get_gene_ids_from_fasta(fasta_path):
-    return [record.id for record in SeqIO.parse(fasta_path, "fasta")]
 
 #Liest Start, Ende und Strangrichtung für Gene aus einer GFF3-Datei
 # Diese Funktion wird für jede FASTA-Datei aufgerufen, wenn die passende GFF3 vorhanden ist
@@ -146,26 +140,17 @@ def extract_positions_for_genes(gff3_path, gene_ids):
             if line.startswith("#") or line.strip() == "":
                 continue
             cols = line.strip().split("\t")
-            if len(cols) != 9:
+            if len(cols) != 9 or cols[2].lower() != "gene":
                 continue  # ungültige Zeile überspringen
 
-            seqid, source, feature, start, end, score, strand, phase, attributes = cols
-
-            # Nur Gene berücksichtigen
-            if feature.lower() != "gene":
-                continue
-
-            attr_dict = {}
-            for attr in attributes.split(";"):
-                if "=" in attr:
-                    key, value = attr.split("=", 1)
-                    attr_dict[key] = value
-
-            gene_id = attr_dict.get("ID")
+            attributes = {k: v for part in cols[8].split(";") if "=" in part for k, v in [part.split("=", 1)]}
+            gene_id = attributes.get("ID")
             if gene_id and gene_id in gene_id_set:
-                positions[gene_id] = (int(start), int(end), seqid)
+                positions[gene_id] = (int(cols[3]), int(cols[4]), cols[0])
+    return positions
 
-    return positions       
+
+              
 
 # Labels aus transponierten export-file laden    
 def load_labels(label_file):
@@ -176,17 +161,14 @@ def load_labels(label_file):
     labels = df_labels.iloc[1, 1:].tolist()
     # Erstelle ein Dictionary: {Gen-ID: Label}
     return dict(zip(gene_ids, labels))
-    
-# Labels als weitere Zeile in output .csv-Datei laden
-def add_label_row(df, label_dict):
+
+ # NEU   
+def add_label_column(df, label_dict):
     labels = []
-    
-    for gene in df.columns:
-        base_gene = "_".join(gene.split("_")[:-1])  # "gene-T4p161_0" -> "gene-T4p161"
-        label = label_dict.get(base_gene, "unknown")
-        labels.append(label)
-            
-    df.loc["Temporal_Class"] = labels
+    for uid in df.index:
+        base = "_".join(uid.split("_")[:-1])  # gene123_0 → gene123
+        labels.append(label_dict.get(base, "unknown"))
+    df["Temporal_Class"] = labels
     return df
     
 def extract_features(records, ks, positions=None): # positions optional übergeben
@@ -209,7 +191,6 @@ def extract_features(records, ks, positions=None): # positions optional übergeb
             row.update({
                 "start" : start,
                 "end" : end
-                # "strand" : 1 if strand == "+" else -1 # Plus-Strang (5' -> 3'), Minus-Strang (3' <- 5')
             })
 
         #Zähle Promotor Motive
@@ -239,9 +220,7 @@ def extract_all_features():
     # Label_file
     label_file = Path("output/zusammengefuegt_transponiert.csv")
     label_dict = load_labels(label_file)
-
     ks = [3, 4]
-    transpose = True
 
     for fasta_path in input_dir.glob("*.fasta"):
         out_path = output_dir / f"{fasta_path.stem}_features.csv"
@@ -262,26 +241,30 @@ def extract_all_features():
 
         #Übergabe Positionen am Feature Funktion
         df = extract_features(records, ks, positions)
-        if transpose:
-            df = df.T
+        # ALT if transpose:
+            # ALT df = df.T
 
         # Labelzeile hinzufügen
-        df = add_label_row(df, label_dict)
-        df.to_csv(out_path, index=True, index_label="GeneID")
+        df = add_label_column(df, label_dict)
+        df.insert(0, "GeneID", df.index) #NEU
+        df.reset_index(drop=True, inplace=True) #NEU
+        df.to_csv(out_path, index=False)
+        print(f" Features extrahiert: {out_path.name}")
         
 
 # Um alle Dateien zu einer zusammenzufügen für die Training-/Testdaten Splits       
-def merge_csvs(input_folder: str, output_file: str = "output/feature_engineering_merged.csv"):
-    
+def merge_csvs(input_folder: str = "output/feature_engineering", output_file: str = "output/feature_matrix_with_structure.csv"):
     file_paths = glob.glob(os.path.join(input_folder, "*.csv"))
     if not file_paths:
-        print("Keine CSV-Dateien gefunden.")
+        print(" Keine CSV-Dateien gefunden.")
         return
-    
-    merged_df = pd.read_csv(file_paths[0], index_col=0)
-    
-    for file in file_paths[1:]:
-        df = pd.read_csv(file, index_col=0)
-        merged_df = pd.concat([merged_df, df], axis=1)
-        
-    merged_df.to_csv(output_file)
+    dfs = [pd.read_csv(fp) for fp in file_paths]
+    merged_df = pd.concat(dfs, axis=0)
+    merged_df.to_csv(output_file, index=False)
+    print(f" Alle Features zusammengeführt: {output_file}")
+
+# --------------------
+
+if __name__ == "__main__":
+    extract_all_features()
+    merge_csvs()

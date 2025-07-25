@@ -108,7 +108,7 @@ def extract_structure_features(pdb_dir: Path, output_csv: Path):
 
         #Zeile für Features zur Liste hinzufügen
         features.append({
-            "structure": structure_id,
+            "GeneID": structure_id,
             "num_atoms": len(atoms),
             "num_chains": len(chains),
             "num_residues": len(residues),

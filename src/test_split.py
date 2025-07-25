@@ -24,30 +24,30 @@ import joblib
 
 
 # Daten laden
-data = pd.read_csv("output/feature_engineering_reduced.csv")
+data = pd.read_csv("output/feature_matrix_with_structure_reduced.csv") # verändert weil falsche Datei war hier davor _reduced
 phagenames = ["PHIKZ", "CPT_phageK", "T4", "phage515_", "DMS3", "VPVV882", "phiYY"]
-gene_IDs = data.columns.tolist()[1:] #Liste von allen GeneIDs
+gene_IDs = data["GeneID"]
 # Dictionary mit allen Phagennamen und leeren Listen (hier kommen die GeneIDS dann rein)
 phage_to_genes = {phage: [] for phage in phagenames}
 
 # Dictionary befüllen
 for gene in gene_IDs:
     for phage in phagenames:
-        if gene.startswith(f"gene-{phage}"):
+        if phage.lower() in gene.lower():
             phage_to_genes[phage].append(gene)
             break  
 
 # phage_to_genes = Pro Phage eine Liste, die alle Gene der Phage speichert
 # --> Für saubere Trennung von Test- und Trainingsdaten
 
-# Labels = letzte Zeile (ohne erste Spalte), Index setzen auf Gen-Namen
-labels = data.iloc[-1, 1:]
-labels.index = data.columns[1:]
+# Neue Matrix: jede Zeile = Sample, letzte Spalte = Label
+labels = data["Temporal_Class"]
+features = data.drop(columns=["GeneID", "Temporal_Class"])
 
-# Features = alle Zeilen außer letzte, ab zweiter Spalte zu numerischen Werten
-# Features transponieren, damit Samples in Zeilen sind
-features = data.iloc[:-1, 1:].transpose()
-features = features.apply(pd.to_numeric)
+# Setze GeneID als Index
+features.index = data["GeneID"]
+labels.index = data["GeneID"]
+
 
 # Model
 models = {
