@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 import pprint
+import joblib
 
 
 # Vergleich von verschiedenen Split Strategien um Daten in Trainings- und Testdaten einzuteilen
@@ -23,7 +24,7 @@ import pprint
 
 
 # Daten laden
-data = pd.read_csv("output/feature_matrix_with_structure.csv")
+data = pd.read_csv("output/feature_engineering_reduced.csv")
 phagenames = ["PHIKZ", "CPT_phageK", "T4", "phage515_", "DMS3", "VPVV882", "phiYY"]
 gene_IDs = data.columns.tolist()[1:] #Liste von allen GeneIDs
 # Dictionary mit allen Phagennamen und leeren Listen (hier kommen die GeneIDS dann rein)
@@ -185,3 +186,12 @@ plt.ylim(0, 1)
 plt.tight_layout()
 plt.savefig("output/models/recall_comparison.png")
 
+# Trainiere alle Modelle final auf allen Daten und speichere sie
+for name, model in models.items():
+    print(f"Speichere Modell: {name}")
+    if "XGBoost" in name:
+        y_final = LabelEncoder().fit_transform(labels)
+    else:
+        y_final = labels
+    model.fit(features, y_final)
+    joblib.dump(model, f"output/models/{name.replace(' ', '_').lower()}.joblib")

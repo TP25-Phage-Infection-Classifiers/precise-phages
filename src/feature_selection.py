@@ -6,7 +6,7 @@ import shap
 import matplotlib.pyplot as plt
 
 # feature Datei wird eingelesen
-df = pd.read_csv("output/feature_matrix_with_structure.csv", index_col=0)
+df = pd.read_csv("output/feature_engineering_merged.csv", index_col=0)
 
 y = df.loc["Temporal_Class"]
 X = df.drop("Temporal_Class", axis=0).T
