@@ -1,56 +1,80 @@
-
 import streamlit as st
+from Bio import SeqIO
+from BCBio import GFF
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 import pandas as pd
+import joblib
+import tempfile
 import os
-import shutil
-from pathlib import Path
-import subprocess
+import feature_engineering as fe
 
-st.set_page_config(page_title="Precise Phages GUI", layout="centered")
+# Modell laden
+model = joblib.load("output/models/xgboost_model.pkl")
+label_encoder = joblib.load("output/models/label_encoder.joblib")
 
-st.title("🧬 Precise Phages: Analyse und Vorhersage")
+# Erwartete Feature-Reihenfolge laden
+expected_columns = pd.read_csv("output/feature_matrix_with_structure_reduced.csv")
+expected_columns = expected_columns.drop(columns=["GeneID", "Temporal_Class"]).columns
 
-# == 1. Datei-Upload ==
-st.header(" Datei hochladen")
-uploaded_file = st.file_uploader("Lade eine Genom- oder CSV-Datei hoch", type=["csv", "fasta", "fa", "txt"])
+st.set_page_config(page_title="Precise-Phages", layout="centered")
+st.title("🧬 Precise-Phages: Klassifikation mit FASTA + GFF3")
 
-input_dir = Path("input")
-input_dir.mkdir(exist_ok=True)
+st.markdown("Lade eine FASTA- und die zugehörige GFF3-Datei hoch, um die temporale Expression deiner Gene vorherzusagen.")
 
-if uploaded_file:
-    file_path = input_dir / uploaded_file.name
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.success(f"Datei erfolgreich hochgeladen: {uploaded_file.name}")
+fasta_file = st.file_uploader("📄 FASTA-Datei hochladen", type=["fasta", "fa"])
+gff_file = st.file_uploader("📄 GFF3-Datei hochladen", type=["gff3"])
 
-# == 2. Daten aufbereiten ==
-st.header(" Datenaufbereitung")
+if fasta_file and gff_file:
+    if st.button("🔍 Vorhersagen starten"):
+        with st.spinner("Verarbeite Sequenzen & GFF3…"):
+            # Temporäre Dateien erzeugen (Streamlit braucht Pfade für GFF Parser)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                fasta_path = os.path.join(tmpdir, "input.fasta")
+                gff_path = os.path.join(tmpdir, "input.gff3")
 
-if st.button("Daten vorbereiten"):
-    try:
-        from src.main import generate_output
-        generate_output()
-        st.success("👩‍🔬 Datenaufbereitung abgeschlossen.")
-    except Exception as e:
-        st.error(f"🧐 Fehler bei der Aufbereitung: {e}")
+                with open(fasta_path, "wb") as f:
+                    f.write(fasta_file.read())
+                with open(gff_path, "wb") as f:
+                    f.write(gff_file.read())
 
-# == 3. Vorhersage starten ==
-st.header(" Vorhersage mit XGBoost")
+                # FASTA einlesen
+                fasta_dict = SeqIO.to_dict(SeqIO.parse(fasta_path, "fasta"))
 
-if st.button("Vorhersage ausführen"):
-    try:
-        subprocess.run(["python3", "src/predict.py"], check=True)
-        st.success(" Vorhersage abgeschlossen.")
-    except subprocess.CalledProcessError as e:
-        st.error(f" Fehler bei der Vorhersage: {e}")
+                # GFF3 einlesen → extrahierte Gene als SeqRecord-Liste
+                gene_records = []
+                with open(gff_path) as gff_handle:
+                    for rec in GFF.parse(gff_handle, base_dict=fasta_dict):
+                        for feature in rec.features:
+                            if feature.type != "gene":
+                                continue
+                            gene_seq = feature.extract(rec.seq)
+                            gene_id = feature.qualifiers.get("ID", ["unknown_gene"])[0]
+                            gene_record = SeqRecord(gene_seq, id=gene_id, description="")
+                            gene_records.append(gene_record)
 
-# == 4. Ergebnisse anzeigen ==
-st.header(" Vorhersagen anzeigen")
+                if not gene_records:
+                    st.error("Keine Gene im GFF3 gefunden.")
+                else:
+                    # Feature Engineering
+                    features = fe.extract_features(gene_records, ks=[3, 4], positions=None)
 
-pred_path = input_dir / "predictions.csv"
-if pred_path.exists():
-    df = pd.read_csv(pred_path)
-    st.dataframe(df)
-    st.download_button(" Vorhersagen herunterladen", df.to_csv(index=False), file_name="predictions.csv")
-else:
-    st.info("Noch keine Vorhersagen gefunden.")
+                    # Feature-Alignment (wie beim Training)
+                    features = features.reindex(columns=expected_columns, fill_value=0)
+
+                    # Prediction
+                    prediction = model.predict(features)
+                    predicted_labels = label_encoder.inverse_transform(prediction)
+
+                    # Ergebnis anzeigen
+                    results = pd.DataFrame({
+                        "GeneID": [r.id for r in gene_records],
+                        "Temporal_Class": predicted_labels
+                    })
+
+                    st.success("Vorhersage abgeschlossen!")
+                    st.dataframe(results)
+
+                    # Download
+                    csv = results.to_csv(index=False).encode("utf-8")
+                    st.download_button("📥 Ergebnisse als CSV herunterladen", data=csv, file_name="vorhersage.csv", mime="text/csv")
