@@ -35,7 +35,7 @@ if st.button("Daten vorbereiten"):
         st.error(f"🧐 Fehler bei der Aufbereitung: {e}")
 
 # == 3. Vorhersage starten ==
-st.header(" Vorhersage mit Random Forest")
+st.header(" Vorhersage mit XGBoost")
 
 if st.button("Vorhersage ausführen"):
     try:
