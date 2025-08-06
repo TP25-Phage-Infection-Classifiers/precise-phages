@@ -41,7 +41,7 @@ if fasta_file and gff_file:
                 # FASTA einlesen
                 fasta_dict = SeqIO.to_dict(SeqIO.parse(fasta_path, "fasta"))
 
-                # GFF3 einlesen → extrahierte Gene als SeqRecord-Liste
+                # GFF3 einlesen -> extrahierte Gene als SeqRecord-Liste
                 gene_records = []
                 with open(gff_path) as gff_handle:
                     for rec in GFF.parse(gff_handle, base_dict=fasta_dict):
